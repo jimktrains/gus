@@ -1,0 +1,6 @@
+[submodule "vendor/pystache"]
+	path = vendor/pystache
+	url = https://github.com/defunkt/pystache
+[submodule "vendor/python-textile"]
+	path = vendor/python-textile
+	url = https://github.com/sebix/python-textile
