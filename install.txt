@@ -1,0 +1,3 @@
+sudo pip install textile
+sudo pip install pyaml
+sudo pip install pystache

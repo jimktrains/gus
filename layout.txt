@@ -1,9 +1,0 @@
-/pages/articles/<name>.textile
-/pages/top-level/<name>.textile
-/templates/404.mustache
-/templates/article.mustache
-/templates/index.mustache
-/templates/layout.mustache
-/templates/search.mustache
-/templates/search-results.mustache
-/templates/top-level.mustache
