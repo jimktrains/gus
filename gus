@@ -6,20 +6,25 @@ import copy
 import pystache
 from textile import textile
 import yaml
-from optparse import OptionParser
+from argparse import ArgumentParser, ArgumentTypeError
 import re
 
-parser = OptionParser()
-parser.add_option("-s", "--source", dest="site_dir",
-	help="DIR the site resides in", metavar="DIR")
-parser.add_option("-d", "--destination", dest="dest_dir",
-	help="DIR the site renders to", metavar="DIR")
+parser = ArgumentParser(prog="gus", description="Generate static sites from textile and mustache files.")
+def src_dest_argtype(string):
+	match = re.match("(?P<src>[^:]+):(?P<dest>[^:]+)", string)
+	if match is None:
+		raise ArgumentTypeError("gus [--match] src_dir:dest_dir")
+	return match.groupdict()
 
-(options, args) = parser.parse_args()
+parser.add_argument("-w", "--watch", action="store_true", help="Watch src directory for changes.")
+parser.add_argument("src_dest", metavar="src_dir:dest_dir", type=src_dest_argtype,
+	help="The source and generated site are set using a colon. For example, gus src:public")
+
+args = parser.parse_args()
 
 class Gus:
 	def __init__(self, site_dir, dest_dir):
-		assert os.path.isdir(site_dir), "%s must be a dir" % options.site_dir
+		assert os.path.isdir(site_dir), "%s must be a dir" % site_dir
 		
 		properties_file = os.path.join(site_dir, "properties.yml")
 		assert os.path.isfile(properties_file), "%s must be a file" % properties_file
@@ -37,6 +42,7 @@ class Gus:
 		rendered_path   = dest_dir
 		assert os.path.isdir(rendered_path), "%s must be a dir" % rendered_path
 		assert os.access(rendered_path, os.W_OK), "%s must be writable" % rendered_path
+		# Perhaps render in a tmpdir first, then change links. This is too destructive too early.
 		for dirname, dirnames, filenames in os.walk(rendered_path):
 			for subdirname in dirnames:
 				shutil.rmtree(os.path.join(rendered_path, subdirname))
@@ -52,7 +58,7 @@ class Gus:
 		assert os.path.isdir(tl_path), "%s must be a dir" % tl_path
 		self.tl_path = tl_path
 		
-		templates_path  = os.path.join(options.site_dir, "templates")
+		templates_path  = os.path.join(site_dir, "templates")
 		assert os.path.isdir(templates_path), "%s must be a dir" % templates_path
 		self.templates_path = templates_path
 
@@ -128,5 +134,5 @@ class Gus:
 		self.render_tl()
 		self.copy_assets()
 
-gus = Gus(options.site_dir, options.dest_dir)
+gus = Gus(args.src_dest['src'], args.src_dest['dest'])
 gus.render_site()
