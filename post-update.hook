@@ -6,8 +6,10 @@ GUS=/home/jim/projects/gus/gus
 TMPSITE=/tmp/test-site
 # Where should this be cloned from
 REPO=/tmp/gus
+# Place to put the rendered site until we know it's rendered w/o error
+TMPDEST=/tmp/test-site-rendered
 # The final resting place
-DEST=/var/www/test
+FINALDEST=/var/www/test
 
 if [ ! -d $TMPSITE ]; then
 	git clone $REPO $TMPSITE
@@ -16,5 +18,7 @@ fi
 cd $TMPSITE
 unset GIT_DIR
 git pull origin master
+rm -rf $TMPDEST
+mkdir -p $TMPDEST
 
-python $GUS -s $TMPSITE/site -d $DEST
+python $GUS -s $TMPSITE/site -d $TMPDEST && cp -r $TMPDEST $FINALDEST
