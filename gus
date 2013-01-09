@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from argparse import ArgumentParser, ArgumentTypeError
-from gus import Gus
+from gus import GusFSAdapter
 from watchdog.events import LoggingEventHandler, FileSystemEventHandler
 from watchdog.observers import Observer
 from wdeventhandler import WDEventHandler
@@ -21,7 +21,7 @@ parser.add_argument("src_dest", metavar="src_dir:dest_dir", type=src_dest_argtyp
 
 args = parser.parse_args()
 
-gus = Gus(args.src_dest['src'], args.src_dest['dest'])
+gus = GusFSAdapter(args.src_dest['src'], args.src_dest['dest'])
 
 if args.watch:
 	event_handler = WDEventHandler(gus)
