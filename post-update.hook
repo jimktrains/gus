@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# Path to GUS
+GUS=/home/jim/projects/gus/gus
+# A place to place a temp repo to render
+TMPSITE=/tmp/test-site
+# Where should this be cloned from
+REPO=/tmp/gus
+# The final resting place
+DEST=/var/www/test
+
+if [ ! -d $TMPSITE ]; then
+	git clone $REPO $TMPSITE
+fi
+
+cd $TMPSITE
+unset GIT_DIR
+git pull origin master
+
+python $GUS -s $TMPSITE/site -d $DEST
