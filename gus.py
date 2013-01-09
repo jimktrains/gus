@@ -76,6 +76,7 @@ class Gus:
 		assert os.path.isfile(properties_file), "%s must be a file" % properties_file
 		with open(properties_file, 'r') as f:
 			self.properties = yaml.load(f)
+		self.original_properties = copy.deepcopy(self.properties)
 		
 		pages_path      = os.path.join(site_dir, "pages")
 		assert os.path.isdir(pages_path), "%s must be a dir" % pages_path
@@ -121,18 +122,7 @@ class Gus:
 		self.top_level_template = pystache.render(self.layout_template, { 'body': self.top_level_template })
 		self.renderable = []
 		self.pages = {}
-
-	def render_pages(self):
-		for rend in self.renderable:
-			dest_file = os.path.join(self.rendered_path, rend.name + ".html")
-			dest_file_dir = os.path.dirname(dest_file)
-			if not os.path.isdir(dest_file_dir):
-				os.makedirs(dest_file_dir)
-			with open(dest_file, 'w+') as f:
-				f.write(rend.render());
-
-	def load_pages(self, path = None):
-		page_types = {
+		self.page_types = {
 			"posts": {
 				"template":   self.posts_template,
 				"path":       self.posts_path,
@@ -144,13 +134,27 @@ class Gus:
 				"final_path": ''
 			}
 		}
+		self.rendering = False
+
+	def render_pages(self):
+		for rend in self.renderable:
+			dest_file = os.path.join(self.rendered_path, rend.name + ".html")
+			dest_file_dir = os.path.dirname(dest_file)
+			if not os.path.isdir(dest_file_dir):
+				os.makedirs(dest_file_dir)
+			with open(dest_file, 'w+') as f:
+				f.write(rend.render());
+
+	# This method loads all of the pages into memory
+	# Then it performs some bookkeeping on them
+	def load_pages(self, path = None):
+		# This method loops over the filesystem and pulls
+		# all of the pages listed in page_types above.
+		# It then creates renderables for each
 		def handle_dir(page_type, info, dir_name, base_name=None):
 			if base_name is None:
 				base_name = dir_name
 			for dirname, dirnames, filenames in os.walk(dir_name):
-				for subdirname in dirnames:
-					subdirname = os.path.join(dirname, subdirname)
-					handle_dir(page_type, info, subdirname, base_name)
 				for filename in filenames:
 					if filename == '.gitignore':
 						continue
@@ -169,13 +173,25 @@ class Gus:
 					print "renderable %s" % name
 					r = Renderable(name, info['template'], markup_format, content, self.properties, page_type)
 					self.renderable.append(r)
-		for page_type, info in page_types.items():
+		for page_type, info in self.page_types.items():
 			handle_dir(page_type, info, info["path"])
+
+	# This needs a better name
+	# basically it calculates all the lists of all the pages
+	# and tags and everything else we need
+	# Later on it'll calculate rf-idf and tag clouds and the such
+	def calculate_properties(self):
+		self.properties['current_time'] = time.time();
+		for page_type, info in self.page_types.items():
+			# Sort the pages by date
 			self.pages[page_type] = [ x for x in self.renderable if x.page_type == page_type ]
 			self.pages[page_type].sort( key = lambda page : page.metadata['date'], reverse=True)
+
+			# Allow the templates to see all the pages
 			self.properties[page_type] = [ x.as_dict() for x in self.pages[page_type] ]
 			self.properties["last_5_%s" % page_type] = [ x.as_dict() for x in self.pages[page_type][:5] ]
 
+			# Allow the templates to get a list of tags and associated pages
 			tags = set([ tag for page in self.pages[page_type] for tag in page.metadata['tags'] ] )
 			self.properties["%s_tags" % page_type] = []
 			for tag in tags:
@@ -183,6 +199,9 @@ class Gus:
 					'tag':      tag,
 					'pages': [ x.as_dict() for x in self.pages[page_type] if tag in x.metadata['tags'] ]
 				})
+
+	# This is the eq of doing cp -r directory/* other-dir
+	# It copies everything in a directory, but not the directory
 	def copytree_wo_root(self, src, dest):
 		for dirname, dirnames, filenames in os.walk(src):
 			rel_path = re.sub(src, '', dirname)
@@ -201,12 +220,25 @@ class Gus:
 				shutil.copy(src_name, dest_name)
 	def copy_assets(self):
 		self.copytree_wo_root(self.assets_path, self.rendered_path)
+
+	# Up until now we've been writing to a tmp folder
+	# This moves the files from the tmp folder to the real rendered location
+	# It then removes the tmp folder and sets up another one for use if we render again
 	def finalize(self):
 		self.copytree_wo_root(self.rendered_path, self.final_rendered_path)
-		shutil.rmtree(self.rendered_path)
-		self.rendered_path = tempfile.mkdtemp()
+
+	# This method goes through all of the steps to completly
+	# render a site, and then resets the object the make sure
+	# it's good to call again
 	def render_site(self):
 		self.load_pages()
+		self.calculate_properties()
 		self.render_pages()
 		self.copy_assets()
 		self.finalize()
+		# The rest of this basically resets the object
+		self.renderable = []
+		self.pages = {}
+		self.properties = copy.deepcopy(self.original_properties)
+		shutil.rmtree(self.rendered_path)
+		self.rendered_path = tempfile.mkdtemp()

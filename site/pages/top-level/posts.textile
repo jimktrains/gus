@@ -1,3 +1,5 @@
+Current Time: {{current_time}}
+
 {{#posts}}
 <div>
 	<div><a href="{{name}}">{{title}}</a></div>
