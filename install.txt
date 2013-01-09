@@ -1,4 +1,5 @@
 sudo pip install textile
+sudo pip install markdown
 sudo pip install pyaml
 sudo pip install pystache
 sudo pip install watchdog
