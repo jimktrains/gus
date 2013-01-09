@@ -91,17 +91,17 @@ class Gus:
 		page_layout = pystache.render(self.layout_template, props)
 		return page_layout
 	
-	def render_pages(self, pages_dir, page_template, base_dir = None):
+	def render_pages(self, pages_dir, page_template, dest_dir, base_dir = None):
 		if base_dir is None:
 			base_dir = pages_dir
 		for dirname, dirnames, filenames in os.walk(pages_dir):
 			for subdirname in dirnames:
-				self.render_posts(os.path.join(pages_dir, subdirname), page_template, self.base_dir)
+				self.render_posts(os.path.join(pages_dir, subdirname), page_template, dest, base_dir)
 			for filename in filenames:
 				src      = os.path.join(pages_dir, filename)
 				rel_file = re.sub(base_dir + os.path.sep, '', src)
 				rel_file = re.sub('\.textile', '', rel_file)
-				dest     = os.path.join(self.rendered_path, rel_file + ".html")
+				dest     = os.path.join(self.rendered_path, dest_dir, rel_file + ".html")
 				rendered_page = self.render_file(src, page_template) 
 				dest_dir  = os.path.dirname(dest)
 				if not os.path.isdir(dest_dir):
@@ -109,9 +109,9 @@ class Gus:
 				with open(dest, 'w+') as f:
 					f.write(rendered_page);
 	def render_posts(self):
-		self.render_pages(self.posts_path, self.posts_template)
+		self.render_pages(self.posts_path, self.posts_template, 'posts')
 	def render_tl(self):
-		self.render_pages(self.tl_path, self.tl_template)
+		self.render_pages(self.tl_path, self.tl_template, '')
 	def copy_assets(self):
 		for name in os.listdir(self.assets_path):
 			rendered_name = os.path.join(self.rendered_path, name)
