@@ -2,8 +2,6 @@ GUS is a textile and mustache static-site generator.
 
 GUS takes textile files, puts them into a type-specific template, and then places that all into a site-wide layout template.
 
-types are: posts and top-level pages.
-
 Run the example by `./gus -s site -d site/rendered`
 
 Implemented:
@@ -23,12 +21,13 @@ To be implemented:
 * /templates/search-results.mustache -> /search?q=<query>
 
 The compile script needs to do a few things:
-# Create all the pages for the site and place them in a `rendered` directory
-# Create the datafile file for text
-# Create the datafile file for tags
-# Create the datafile file for titles
 
-==Format for articles==
+1. Create all the pages for the site and place them in a `rendered` directory
+1. Create the datafile file for text
+1. Create the datafile file for tags
+1. Create the datafile file for titles
+
+#Format for articles
 Lines begining with % are metadata lines.
 
 Metadata lines have the format of
