@@ -1,0 +1,6 @@
+{{#posts}}
+<div>
+	<div><a href="{{name}}">{{title}}</a></div>
+	<div>{{date}} {{#tags}}{{tag}} {{/tags}}</div>
+</div>
+{{/posts}}

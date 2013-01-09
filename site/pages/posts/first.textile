@@ -1,5 +1,5 @@
 %title First Post!
-%date 2013-08-01
+%date 2013-01-07
 %tags ideas blog rambles
 
 h2. markItUp! Universal markup editor

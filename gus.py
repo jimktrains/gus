@@ -23,6 +23,15 @@ class Renderable:
 		self.page_type = page_type
 		self.metadata = False
 		self.extract_metadata()
+	def as_dict(self):
+		return {
+			"name"     : self.name,
+			"title"    : self.metadata['title'],
+			"date"     : self.metadata['date'],
+			"tags"     : self.metadata['tags'],
+			"content"  : self.rendered,
+			"metadata" : self.metadata
+		}
 	def extract_metadata(self):
 		if not self.metadata:
 			meta = re.finditer( '^%(\S*) (.*)$', self.content, re.MULTILINE)
@@ -164,20 +173,15 @@ class Gus:
 			handle_dir(page_type, info, info["path"])
 			self.pages[page_type] = [ x for x in self.renderable if x.page_type == page_type ]
 			self.pages[page_type].sort( key = lambda page : page.metadata['date'], reverse=True)
-			self.properties["last_5_%s" % page_type] = [ {
-				"name": x.name,
-				"title": x.metadata['title'],
-			} for x in self.pages[page_type][:5] ]
+			self.properties[page_type] = [ x.as_dict() for x in self.pages[page_type] ]
+			self.properties["last_5_%s" % page_type] = [ x.as_dict() for x in self.pages[page_type][:5] ]
 
 			tags = set([ tag for page in self.pages[page_type] for tag in page.metadata['tags'] ] )
 			self.properties["%s_tags" % page_type] = []
 			for tag in tags:
 				self.properties["%s_tags" % page_type].append({
 					'tag':      tag,
-					'pages': [ { 
-							"name": x.name,
-							"title": x.metadata['title'],
-						} for x in self.pages[page_type] if tag in x.metadata['tags'] ]
+					'pages': [ x.as_dict() for x in self.pages[page_type] if tag in x.metadata['tags'] ]
 				})
 	def copytree_wo_root(self, src, dest):
 		for dirname, dirnames, filenames in os.walk(src):
