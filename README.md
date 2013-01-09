@@ -9,7 +9,7 @@ Run the example by `./gus -s site -d site/rendered`
 * `/templates/layout.mustache` + `/templates/articles.mustache` + `/pages/articles/<name>.textile` -> /`<name>`.html (name may contain a subdir)
 * `/templates/layout.mustache` + `/templates/top-level.mustache` + `/pages/top-level/<name>.textile` -> /`<name>`.html (name may contain subdir)
 * properties.yml -> not rendered to anything
-* /assets/<name> -> /<name> (may contain subdir)
+* /assets/`<name>` -> /`<name>` (may contain subdir)
 
 # To be implemented
 
