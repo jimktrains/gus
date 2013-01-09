@@ -113,10 +113,15 @@ class Gus:
 	def render_tl(self):
 		self.render_pages(self.tl_path, self.tl_template, '')
 	def copy_assets(self):
-		for name in os.listdir(self.assets_path):
-			rendered_name = os.path.join(self.rendered_path, name)
-			asset_name    = os.path.join(self.assets_path, name)
-			shutil.copytree(asset_name, rendered_name)
+		for dirname, dirnames, filenames in os.walk(self.assets_path):
+			for name in dirnames:
+				rendered_name = os.path.join(self.rendered_path, name)
+				asset_name    = os.path.join(self.assets_path, name)
+				shutil.copytree(asset_name, rendered_name)
+			for name in filenames:
+				rendered_name = os.path.join(self.rendered_path, name)
+				asset_name    = os.path.join(self.assets_path, name)
+				shutil.copy(asset_name, rendered_name)
 	def render_site(self):
 		self.render_posts()
 		self.render_tl()
