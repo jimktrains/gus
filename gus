@@ -20,8 +20,6 @@ parser.add_option("-v", "--verbose", dest="verbose",
 (options, args) = parser.parse_args()
 assert os.path.isdir(options.site_dir), "%s must be a dir" % options.site_dir
 
-print "Rendering the site located in `%s`" % options.site_dir
-
 properties_file = os.path.join(options.site_dir, "properties.yml")
 assert os.path.isfile(properties_file), "%s must be a file" % properties_file
 with open(properties_file, 'r') as f:
@@ -66,11 +64,6 @@ assert os.path.isfile(tl_template), "%s must be a file" % tl_template
 with open(tl_template, 'r') as f:
 	tl_template = f.read()
 
-index_template  = os.path.join(templates_path, "index.mustache")
-assert os.path.isfile(index_template), "%s must be a file" % index_template
-with open(index_template, 'r') as f:
-	index_template = f.read()
-
 def render_file(file_name, properties, page_template, layout_template):
 	post_raw = None
 	with open(file_name) as f:
@@ -111,8 +104,6 @@ def render_pages(posts_dir, rendered_path, page_template, layout_template, base_
 
 render_pages(posts_path, os.path.join(rendered_path, "posts"), posts_template, layout_template)
 render_pages(tl_path, rendered_path, tl_template, layout_template)
-
-print "Moving assets"
 
 for name in os.listdir(assets_path):
 	rendered_name = os.path.join(rendered_path, name)
