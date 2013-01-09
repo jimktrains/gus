@@ -86,8 +86,9 @@ class Gus:
 				val = val.split(' ')
 			props['page'][name] = val
 			props[name] = val
-		props['page']['body'] = post_rendered
-		props['body'] = pystache.render(page_template, props['page'])
+		props['body'] = post_rendered
+		props['body'] = pystache.render(page_template, props)
+		props['body'] = pystache.render(props['body'], props)
 		page_layout = pystache.render(self.layout_template, props)
 		return page_layout
 	
