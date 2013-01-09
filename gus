@@ -16,94 +16,111 @@ parser.add_option("-d", "--destination", dest="dest_dir",
 	help="DIR the site renders to", metavar="DIR")
 
 (options, args) = parser.parse_args()
-assert os.path.isdir(options.site_dir), "%s must be a dir" % options.site_dir
 
-properties_file = os.path.join(options.site_dir, "properties.yml")
-assert os.path.isfile(properties_file), "%s must be a file" % properties_file
-with open(properties_file, 'r') as f:
-	properties = yaml.load(f)
+class Gus:
+	def __init__(self, site_dir, dest_dir):
+		assert os.path.isdir(site_dir), "%s must be a dir" % options.site_dir
+		
+		properties_file = os.path.join(site_dir, "properties.yml")
+		assert os.path.isfile(properties_file), "%s must be a file" % properties_file
+		with open(properties_file, 'r') as f:
+			self.properties = yaml.load(f)
+		
+		pages_path      = os.path.join(site_dir, "pages")
+		assert os.path.isdir(pages_path), "%s must be a dir" % pages_path
+		self.pages_path = pages_path
+		
+		assets_path     = os.path.join(site_dir, "assets")
+		assert os.path.isdir(assets_path), "%s must be a dir" % assets_path
+		self.assets_path = assets_path
+		
+		rendered_path   = dest_dir
+		assert os.path.isdir(rendered_path), "%s must be a dir" % rendered_path
+		assert os.access(rendered_path, os.W_OK), "%s must be writable" % rendered_path
+		for dirname, dirnames, filenames in os.walk(rendered_path):
+			for subdirname in dirnames:
+				shutil.rmtree(os.path.join(rendered_path, subdirname))
+			for filename in filenames:
+				os.unlink(os.path.join(rendered_path, filename))
+		self.rendered_path = rendered_path
+		
+		posts_path      = os.path.join(pages_path, "posts")
+		assert os.path.isdir(posts_path), "%s must be a dir" % posts_path
+		self.posts_path = posts_path
+		
+		tl_path         = os.path.join(pages_path, "top-level")
+		assert os.path.isdir(tl_path), "%s must be a dir" % tl_path
+		self.tl_path = tl_path
+		
+		templates_path  = os.path.join(options.site_dir, "templates")
+		assert os.path.isdir(templates_path), "%s must be a dir" % templates_path
+		self.templates_path = templates_path
 
-pages_path      = os.path.join(options.site_dir, "pages")
-assert os.path.isdir(pages_path), "%s must be a dir" % pages_path
+		layout_template = os.path.join(templates_path, "layout.mustache")
+		assert os.path.isfile(layout_template), "%s must be a file" % layout_template
+		with open(layout_template, 'r') as f:
+			self.layout_template = f.read()
+		
+		posts_template  = os.path.join(templates_path, "post.mustache")
+		assert os.path.isfile(posts_template), "%s must be a file" % posts_template
+		with open(posts_template, 'r') as f:
+			self.posts_template = f.read()
+		
+		tl_template     = os.path.join(templates_path, "top-level.mustache")
+		assert os.path.isfile(tl_template), "%s must be a file" % tl_template
+		with open(tl_template, 'r') as f:
+			self.tl_template = f.read()
 
-assets_path     = os.path.join(options.site_dir, "assets")
-assert os.path.isdir(assets_path), "%s must be a dir" % assets_path
+	def render_file(self, file_name, page_template):
+		post_raw = None
+		with open(file_name) as f:
+			post_raw = f.read()
+		post_rendered = textile(re.sub('^\%.*$', '', post_raw, 0, re.MULTILINE))
+		meta = re.finditer( '^%(\S*) (.*)$', post_raw, re.MULTILINE)
+		props = copy.deepcopy(self.properties)
+		props['page'] = {}
+		for match in meta:
+			name = match.group(1)
+			val  = match.group(2)
+			if name == 'tags':
+				val = val.split(' ')
+			props['page'][name] = val
+			props[name] = val
+		props['page']['body'] = post_rendered
+		props['body'] = pystache.render(page_template, props['page'])
+		page_layout = pystache.render(self.layout_template, props)
+		return page_layout
+	
+	def render_pages(self, pages_dir, page_template, base_dir = None):
+		if base_dir is None:
+			base_dir = pages_dir
+		for dirname, dirnames, filenames in os.walk(pages_dir):
+			for subdirname in dirnames:
+				self.render_posts(os.path.join(pages_dir, subdirname), page_template, self.base_dir)
+			for filename in filenames:
+				src      = os.path.join(pages_dir, filename)
+				rel_file = re.sub(base_dir + os.path.sep, '', src)
+				rel_file = re.sub('\.textile', '', rel_file)
+				dest     = os.path.join(self.rendered_path, rel_file + ".html")
+				rendered_page = self.render_file(src, page_template) 
+				dest_dir  = os.path.dirname(dest)
+				if not os.path.isdir(dest_dir):
+					os.makedirs(dest_dir)
+				with open(dest, 'w+') as f:
+					f.write(rendered_page);
+	def render_posts(self):
+		self.render_pages(self.posts_path, self.posts_template)
+	def render_tl(self):
+		self.render_pages(self.tl_path, self.tl_template)
+	def copy_assets(self):
+		for name in os.listdir(self.assets_path):
+			rendered_name = os.path.join(self.rendered_path, name)
+			asset_name    = os.path.join(self.assets_path, name)
+			shutil.copytree(asset_name, rendered_name)
+	def render_site(self):
+		self.render_posts()
+		self.render_tl()
+		self.copy_assets()
 
-rendered_path   = options.dest_dir
-assert os.path.isdir(rendered_path), "%s must be a dir" % rendered_path
-assert os.access(rendered_path, os.W_OK), "%s must be writable" % rendered_path
-for dirname, dirnames, filenames in os.walk(rendered_path):
-	for subdirname in dirnames:
-		shutil.rmtree(os.path.join(rendered_path, subdirname))
-	for filename in filenames:
-		os.unlink(os.path.join(rendered_path, filename))
-
-posts_path      = os.path.join(pages_path, "posts")
-assert os.path.isdir(posts_path), "%s must be a dir" % posts_path
-
-tl_path         = os.path.join(pages_path, "top-level")
-assert os.path.isdir(tl_path), "%s must be a dir" % tl_path
-
-templates_path  = os.path.join(options.site_dir, "templates")
-assert os.path.isdir(templates_path), "%s must be a dir" % templates_path
-
-layout_template = os.path.join(templates_path, "layout.mustache")
-assert os.path.isfile(layout_template), "%s must be a file" % layout_template
-with open(layout_template, 'r') as f:
-	layout_template = f.read()
-
-posts_template  = os.path.join(templates_path, "post.mustache")
-assert os.path.isfile(posts_template), "%s must be a file" % posts_template
-with open(posts_template, 'r') as f:
-	posts_template = f.read()
-
-tl_template     = os.path.join(templates_path, "top-level.mustache")
-assert os.path.isfile(tl_template), "%s must be a file" % tl_template
-with open(tl_template, 'r') as f:
-	tl_template = f.read()
-
-def render_file(file_name, properties, page_template, layout_template):
-	post_raw = None
-	with open(file_name) as f:
-		post_raw = f.read()
-	post_rendered = textile(re.sub('^\%.*$', '', post_raw, 0, re.MULTILINE))
-	meta = re.finditer( '^%(\S*) (.*)$', post_raw, re.MULTILINE)
-	props = copy.deepcopy(properties)
-	props['page'] = {}
-	for match in meta:
-		name = match.group(1)
-		val  = match.group(2)
-		if name == 'tags':
-			val = val.split(' ')
-		props['page'][name] = val
-		props[name] = val
-	props['page']['body'] = post_rendered
-	props['body'] = pystache.render(page_template, props['page'])
-	page_layout = pystache.render(layout_template, props)
-	return page_layout
-
-def render_pages(posts_dir, rendered_path, page_template, layout_template, base_dir = None):
-	if base_dir is None:
-		base_dir = posts_dir
-	for dirname, dirnames, filenames in os.walk(posts_dir):
-		for subdirname in dirnames:
-			render_posts(os.path.join(posts_dir, subdirname), rendered_path, page_template, layout_template, posts_dir)
-		for filename in filenames:
-			src      = os.path.join(posts_dir, filename)
-			rel_file = re.sub(posts_dir + os.path.sep, '', src)
-			rel_file = re.sub('\.textile', '', rel_file)
-			dest     = os.path.join(rendered_path, rel_file + ".html")
-			rendered_page = render_file(src, properties, page_template, layout_template) 
-			dest_dir  = os.path.dirname(dest)
-			if not os.path.isdir(dest_dir):
-				os.makedirs(dest_dir)
-			with open(dest, 'w+') as f:
-				f.write(rendered_page);
-
-render_pages(posts_path, os.path.join(rendered_path, "posts"), posts_template, layout_template)
-render_pages(tl_path, rendered_path, tl_template, layout_template)
-
-for name in os.listdir(assets_path):
-	rendered_name = os.path.join(rendered_path, name)
-	asset_name    = os.path.join(assets_path, name)
-	shutil.copytree(asset_name, rendered_name)
+gus = Gus(options.site_dir, options.dest_dir)
+gus.render_site()
