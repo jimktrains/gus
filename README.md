@@ -4,6 +4,8 @@ GUS takes textile files, puts them into a type-specific template, and then place
 
 Run the example by `./gus site:rendered`
 
+Run the example by `./gus -w site:rendered` and as you make changes, the site will be rerendered
+
 # Implemented
 
 * `/templates/layout.mustache` + `/templates/articles.mustache` + `/pages/articles/<name>.textile` -> /`<name>`.html (name may contain a subdir)
