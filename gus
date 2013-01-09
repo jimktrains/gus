@@ -54,9 +54,9 @@ class Gus:
 		assert os.path.isdir(posts_path), "%s must be a dir" % posts_path
 		self.posts_path = posts_path
 		
-		tl_path         = os.path.join(pages_path, "top-level")
-		assert os.path.isdir(tl_path), "%s must be a dir" % tl_path
-		self.tl_path = tl_path
+		top_level_path         = os.path.join(pages_path, "top-level")
+		assert os.path.isdir(top_level_path), "%s must be a dir" % top_level_path
+		self.top_level_path = top_level_path
 		
 		templates_path  = os.path.join(site_dir, "templates")
 		assert os.path.isdir(templates_path), "%s must be a dir" % templates_path
@@ -72,10 +72,10 @@ class Gus:
 		with open(posts_template, 'r') as f:
 			self.posts_template = f.read()
 		
-		tl_template     = os.path.join(templates_path, "top-level.mustache")
-		assert os.path.isfile(tl_template), "%s must be a file" % tl_template
-		with open(tl_template, 'r') as f:
-			self.tl_template = f.read()
+		top_level_template     = os.path.join(templates_path, "top-level.mustache")
+		assert os.path.isfile(top_level_template), "%s must be a file" % top_level_template
+		with open(top_level_template, 'r') as f:
+			self.top_level_template = f.read()
 
 	def render_file(self, file_name, page_template):
 		post_raw = None
@@ -117,8 +117,8 @@ class Gus:
 					f.write(rendered_page);
 	def render_posts(self):
 		self.render_pages(self.posts_path, self.posts_template, 'posts')
-	def render_tl(self):
-		self.render_pages(self.tl_path, self.tl_template, '')
+	def render_top_level(self):
+		self.render_pages(self.top_level_path, self.top_level_template, '')
 	def copy_assets(self):
 		for dirname, dirnames, filenames in os.walk(self.assets_path):
 			for name in dirnames:
@@ -131,7 +131,7 @@ class Gus:
 				shutil.copy(asset_name, rendered_name)
 	def render_site(self):
 		self.render_posts()
-		self.render_tl()
+		self.render_top_level()
 		self.copy_assets()
 
 gus = Gus(args.src_dest['src'], args.src_dest['dest'])
