@@ -14,8 +14,6 @@ parser.add_option("-s", "--source", dest="site_dir",
 	help="DIR the site resides in", metavar="DIR")
 parser.add_option("-d", "--destination", dest="dest_dir",
 	help="DIR the site renders to", metavar="DIR")
-parser.add_option("-v", "--verbose", dest="verbose",
-	help="Be verbose")
 
 (options, args) = parser.parse_args()
 assert os.path.isdir(options.site_dir), "%s must be a dir" % options.site_dir
