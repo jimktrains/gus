@@ -99,21 +99,25 @@ class Gus:
 		return page_layout
 	
 	def render_pages(self, pages_dir, page_template, dest_dir, base_dir = None):
+		print 'pages', pages_dir
+		print 'page_template', page_template
+		print 'dest_dir', dest_dir
+		print 'base_dir', base_dir
 		if base_dir is None:
 			base_dir = pages_dir
 		for dirname, dirnames, filenames in os.walk(pages_dir):
 			for subdirname in dirnames:
-				self.render_posts(os.path.join(pages_dir, subdirname), page_template, dest, base_dir)
+				self.render_posts(os.path.join(pages_dir, subdirname), page_template, dest_file, base_dir)
 			for filename in filenames:
-				src      = os.path.join(pages_dir, filename)
-				rel_file = re.sub(base_dir + os.path.sep, '', src)
+				src_file = os.path.join(pages_dir, filename)
+				rel_file = re.sub(base_dir + os.path.sep, '', src_file)
 				rel_file = re.sub('\.textile', '', rel_file)
-				dest     = os.path.join(self.rendered_path, dest_dir, rel_file + ".html")
-				rendered_page = self.render_file(src, page_template) 
-				dest_dir  = os.path.dirname(dest)
-				if not os.path.isdir(dest_dir):
-					os.makedirs(dest_dir)
-				with open(dest, 'w+') as f:
+				dest_file_dir = os.path.join(self.rendered_path, dest_dir)
+				dest_file = os.path.join(dest_file_dir, rel_file + ".html")
+				rendered_page = self.render_file(src_file, page_template)
+				if not os.path.isdir(dest_file_dir):
+					os.makedirs(dest_file_dir)
+				with open(dest_file, 'w+') as f:
 					f.write(rendered_page);
 	def render_posts(self):
 		self.render_pages(self.posts_path, self.posts_template, 'posts')
