@@ -6,20 +6,25 @@ import copy
 import pystache
 from textile import textile
 import yaml
-from optparse import OptionParser
+from argparse import ArgumentParser, ArgumentTypeError
 import re
 
-parser = OptionParser()
-parser.add_option("-s", "--source", dest="site_dir",
-	help="DIR the site resides in", metavar="DIR")
-parser.add_option("-d", "--destination", dest="dest_dir",
-	help="DIR the site renders to", metavar="DIR")
+parser = ArgumentParser(prog="gus", description="Generate static sites from textile and mustache files.")
+def src_dest_argtype(string):
+	match = re.match("(?P<src>[^:]+):(?P<dest>[^:]+)", string)
+	if match is None:
+		raise ArgumentTypeError("gus [--match] src_dir:dest_dir")
+	return match.groupdict()
 
-(options, args) = parser.parse_args()
+parser.add_argument("-w", "--watch", action="store_true", help="Watch src directory for changes.")
+parser.add_argument("src_dest", metavar="src_dir:dest_dir", type=src_dest_argtype,
+	help="The source and generated site are set using a colon. For example, gus src:public")
+
+args = parser.parse_args()
 
 class Gus:
 	def __init__(self, site_dir, dest_dir):
-		assert os.path.isdir(site_dir), "%s must be a dir" % options.site_dir
+		assert os.path.isdir(site_dir), "%s must be a dir" % site_dir
 		
 		properties_file = os.path.join(site_dir, "properties.yml")
 		assert os.path.isfile(properties_file), "%s must be a file" % properties_file
@@ -37,6 +42,7 @@ class Gus:
 		rendered_path   = dest_dir
 		assert os.path.isdir(rendered_path), "%s must be a dir" % rendered_path
 		assert os.access(rendered_path, os.W_OK), "%s must be writable" % rendered_path
+		# Perhaps render in a tmpdir first, then change links. This is too destructive too early.
 		for dirname, dirnames, filenames in os.walk(rendered_path):
 			for subdirname in dirnames:
 				shutil.rmtree(os.path.join(rendered_path, subdirname))
@@ -48,11 +54,11 @@ class Gus:
 		assert os.path.isdir(posts_path), "%s must be a dir" % posts_path
 		self.posts_path = posts_path
 		
-		tl_path         = os.path.join(pages_path, "top-level")
-		assert os.path.isdir(tl_path), "%s must be a dir" % tl_path
-		self.tl_path = tl_path
+		top_level_path         = os.path.join(pages_path, "top-level")
+		assert os.path.isdir(top_level_path), "%s must be a dir" % top_level_path
+		self.top_level_path = top_level_path
 		
-		templates_path  = os.path.join(options.site_dir, "templates")
+		templates_path  = os.path.join(site_dir, "templates")
 		assert os.path.isdir(templates_path), "%s must be a dir" % templates_path
 		self.templates_path = templates_path
 
@@ -66,10 +72,10 @@ class Gus:
 		with open(posts_template, 'r') as f:
 			self.posts_template = f.read()
 		
-		tl_template     = os.path.join(templates_path, "top-level.mustache")
-		assert os.path.isfile(tl_template), "%s must be a file" % tl_template
-		with open(tl_template, 'r') as f:
-			self.tl_template = f.read()
+		top_level_template     = os.path.join(templates_path, "top-level.mustache")
+		assert os.path.isfile(top_level_template), "%s must be a file" % top_level_template
+		with open(top_level_template, 'r') as f:
+			self.top_level_template = f.read()
 
 	def render_file(self, file_name, page_template):
 		post_raw = None
@@ -93,26 +99,30 @@ class Gus:
 		return page_layout
 	
 	def render_pages(self, pages_dir, page_template, dest_dir, base_dir = None):
+		print 'pages', pages_dir
+		print 'page_template', page_template
+		print 'dest_dir', dest_dir
+		print 'base_dir', base_dir
 		if base_dir is None:
 			base_dir = pages_dir
 		for dirname, dirnames, filenames in os.walk(pages_dir):
 			for subdirname in dirnames:
-				self.render_posts(os.path.join(pages_dir, subdirname), page_template, dest, base_dir)
+				self.render_posts(os.path.join(pages_dir, subdirname), page_template, dest_file, base_dir)
 			for filename in filenames:
-				src      = os.path.join(pages_dir, filename)
-				rel_file = re.sub(base_dir + os.path.sep, '', src)
+				src_file = os.path.join(pages_dir, filename)
+				rel_file = re.sub(base_dir + os.path.sep, '', src_file)
 				rel_file = re.sub('\.textile', '', rel_file)
-				dest     = os.path.join(self.rendered_path, dest_dir, rel_file + ".html")
-				rendered_page = self.render_file(src, page_template) 
-				dest_dir  = os.path.dirname(dest)
-				if not os.path.isdir(dest_dir):
-					os.makedirs(dest_dir)
-				with open(dest, 'w+') as f:
+				dest_file_dir = os.path.join(self.rendered_path, dest_dir)
+				dest_file = os.path.join(dest_file_dir, rel_file + ".html")
+				rendered_page = self.render_file(src_file, page_template)
+				if not os.path.isdir(dest_file_dir):
+					os.makedirs(dest_file_dir)
+				with open(dest_file, 'w+') as f:
 					f.write(rendered_page);
 	def render_posts(self):
 		self.render_pages(self.posts_path, self.posts_template, 'posts')
-	def render_tl(self):
-		self.render_pages(self.tl_path, self.tl_template, '')
+	def render_top_level(self):
+		self.render_pages(self.top_level_path, self.top_level_template, '')
 	def copy_assets(self):
 		for dirname, dirnames, filenames in os.walk(self.assets_path):
 			for name in dirnames:
@@ -125,8 +135,8 @@ class Gus:
 				shutil.copy(asset_name, rendered_name)
 	def render_site(self):
 		self.render_posts()
-		self.render_tl()
+		self.render_top_level()
 		self.copy_assets()
 
-gus = Gus(options.site_dir, options.dest_dir)
+gus = Gus(args.src_dest['src'], args.src_dest['dest'])
 gus.render_site()

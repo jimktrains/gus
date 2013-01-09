@@ -2,7 +2,7 @@ GUS is a textile and mustache static-site generator.
 
 GUS takes textile files, puts them into a type-specific template, and then places that all into a site-wide layout template.
 
-Run the example by `./gus -s site -d site/rendered`
+Run the example by `./gus site:rendered`
 
 # Implemented
 
