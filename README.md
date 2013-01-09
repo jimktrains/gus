@@ -4,30 +4,20 @@ GUS takes textile files, puts them into a type-specific template, and then place
 
 Run the example by `./gus -s site -d site/rendered`
 
-Implemented:
+# Implemented:
 
-* /templates/layout.mustache
-* 	/templates/articles.mustache
-* 		/pages/articles/<name>.textile -> /<name>.html (name may contain a subdir)
-* /templates/layout.mustache
-* 	/templates/top-level.mustache
-* 		/pages/top-level/<name>.textile -> /<name> (name may contain subdir)
-properties.yml -> not rendered to anything
-/assets/<name> -> /<name> (may contain subdir)
+* `/templates/layout.mustache` + `/templates/articles.mustache` + `/pages/articles/<name>.textile` -> /<name>.html (name may contain a subdir)
+* `/templates/layout.mustache` + `/templates/top-level.mustache` + `/pages/top-level/<name>.textile` -> /<name> (name may contain subdir)
+* properties.yml -> not rendered to anything
+* /assets/<name> -> /<name> (may contain subdir)
 
-To be implemented:
+# To be implemented
 
 * /templates/search.mustache -> /search
 * /templates/search-results.mustache -> /search?q=<query>
+ * Will require pre-computing statistics and indexes
 
-The compile script needs to do a few things:
-
-1. Create all the pages for the site and place them in a `rendered` directory
-1. Create the datafile file for text
-1. Create the datafile file for tags
-1. Create the datafile file for titles
-
-#Format for articles
+# Format for articles
 Lines begining with % are metadata lines.
 
 Metadata lines have the format of
