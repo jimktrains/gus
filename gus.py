@@ -13,23 +13,34 @@ import yaml
 
 class Renderable:
 	# Name should not contain an extention
-	def __init__(self, name, page_layout, markup_format, content, properties):
+	def __init__(self, name, page_layout, markup_format, content, properties, page_type):
 		self.name = name
 		self.page_layout = page_layout
 		self.markup_format = markup_format
 		self.content = content
 		self.properties = properties
 		self.rendered = False
+		self.page_type = page_type
+		self.metadata = False
+		self.extract_metadata()
 	def extract_metadata(self):
-		meta = re.finditer( '^%(\S*) (.*)$', self.content, re.MULTILINE)
-		props = copy.deepcopy(self.properties)
-		for match in meta:
-			name = match.group(1)
-			val  = match.group(2)
-			if name == 'tags':
-				val = val.split(' ')
-			props[name] = val
-		return props
+		if not self.metadata:
+			meta = re.finditer( '^%(\S*) (.*)$', self.content, re.MULTILINE)
+			props = {}
+			for match in meta:
+				name = match.group(1)
+				val  = match.group(2)
+				if name == 'tags':
+					val = val.split(' ')
+				props[name] = val
+			if not 'title' in props:
+				props['title'] = self.name
+			if not 'date' in props:
+				props['date'] = None
+			if not 'tags' in props:
+				props['tags'] = []
+			self.metadata = props
+		return self.metadata
 	def render(self):
 		if not self.rendered:
 			page_rendered = re.sub('^\%.*$', '', self.content, 0, re.MULTILINE)
@@ -37,8 +48,8 @@ class Renderable:
 				page_rendered = textile(page_rendered)
 			elif self.markup_format == ".md":
 				page_rendered = markdown(page_rendered)
-			
-			props = self.extract_metadata()
+
+			props = dict(self.metadata.items() + self.properties.items())
 
 			props['body'] = page_rendered
 			props['body'] = pystache.render(self.page_layout, props)
@@ -100,6 +111,8 @@ class Gus:
 			self.top_level_template = f.read()
 		self.top_level_template = pystache.render(self.layout_template, { 'body': self.top_level_template })
 		self.renderable = []
+		self.pages = {}
+
 	def render_pages(self):
 		for rend in self.renderable:
 			dest_file = os.path.join(self.rendered_path, rend.name + ".html")
@@ -122,13 +135,13 @@ class Gus:
 				"final_path": ''
 			}
 		}
-		def handle_dir(info, dir_name, base_name=None):
+		def handle_dir(page_type, info, dir_name, base_name=None):
 			if base_name is None:
 				base_name = dir_name
 			for dirname, dirnames, filenames in os.walk(dir_name):
 				for subdirname in dirnames:
 					subdirname = os.path.join(dirname, subdirname)
-					handle_dir(info, subdirname, base_name)
+					handle_dir(page_type, info, subdirname, base_name)
 				for filename in filenames:
 					if filename == '.gitignore':
 						continue
@@ -145,10 +158,27 @@ class Gus:
 					with open(filename, 'r') as f:
 						content = f.read()
 					print "renderable %s" % name
-					r = Renderable(name, info['template'], markup_format, content, self.properties)
+					r = Renderable(name, info['template'], markup_format, content, self.properties, page_type)
 					self.renderable.append(r)
 		for page_type, info in page_types.items():
-			handle_dir(info, info["path"])
+			handle_dir(page_type, info, info["path"])
+			self.pages[page_type] = [ x for x in self.renderable if x.page_type == page_type ]
+			self.pages[page_type].sort( key = lambda page : page.metadata['date'], reverse=True)
+			self.properties["last_5_%s" % page_type] = [ {
+				"name": x.name,
+				"title": x.metadata['title'],
+			} for x in self.pages[page_type][:5] ]
+
+			tags = set([ tag for page in self.pages[page_type] for tag in page.metadata['tags'] ] )
+			self.properties["%s_tags" % page_type] = []
+			for tag in tags:
+				self.properties["%s_tags" % page_type].append({
+					'tag':      tag,
+					'pages': [ { 
+							"name": x.name,
+							"title": x.metadata['title'],
+						} for x in self.pages[page_type] if tag in x.metadata['tags'] ]
+				})
 	def copytree_wo_root(self, src, dest):
 		for dirname, dirnames, filenames in os.walk(src):
 			rel_path = re.sub(src, '', dirname)
@@ -169,6 +199,8 @@ class Gus:
 		self.copytree_wo_root(self.assets_path, self.rendered_path)
 	def finalize(self):
 		self.copytree_wo_root(self.rendered_path, self.final_rendered_path)
+		shutil.rmtree(self.rendered_path)
+		self.rendered_path = tempfile.mkdtemp()
 	def render_site(self):
 		self.load_pages()
 		self.render_pages()

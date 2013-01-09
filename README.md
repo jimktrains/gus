@@ -30,3 +30,6 @@ Some default keys are
 * tags (space seperated)
 
 The keys are available in the mustache enviroment when render both the page and layout.
+
+# Misc
+In the misc folder are apache and nginx configs for a bare site as well as a git post-update hook. These should help get you started towards getting a server up and going.  Mind you, please read these files carefully and audit them and your server's security yourself.

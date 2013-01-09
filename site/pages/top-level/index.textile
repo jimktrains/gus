@@ -1,5 +1,14 @@
 Home page!
 
-Oh man oh man!
+This is the landing page.
 
-This will be exciting:)
+Tags:
+{{#posts_tags}}
+tag: {{tag}}
+article: {{#pages}}<a href="{{name}}">{{title}}</a>|{{/pages}}
+{{/posts_tags}}
+
+Posts:
+{{#last_5_posts}}
+<a href="{{name}}">{{title}}</a>
+{{/last_5_posts}}
