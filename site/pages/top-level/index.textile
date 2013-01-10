@@ -1,14 +1,5 @@
-Home page!
+Gus allows you to use textile, markdown, and mustache to template and build sites.  This is useful for all those times you don't need or want an entire web stack, but just want some files with formatting and a standard layout. You can find the documentation and issue tracker on "github":https://github.com/jimktrains/gus.
 
-This is the landing page.
-
-Tags:
-{{#posts_tags}}
-tag: {{tag}}
-article: {{#pages}}<a href="{{name}}">{{title}}</a>|{{/pages}}
-{{/posts_tags}}
-
-Posts:
 {{#last_5_posts}}
-<a href="{{name}}">{{title}}</a>
+{{{content}}}
 {{/last_5_posts}}

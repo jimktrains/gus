@@ -13,23 +13,26 @@ import yaml
 
 class Renderable:
 	# Name should not contain an extention
-	def __init__(self, name, page_layout, markup_format, content, properties, page_type):
+	def __init__(self, name, page_template, layout_template, markup_format, content, properties, page_type):
 		self.name = name
-		self.page_layout = page_layout
+		self.page_template = page_template
 		self.markup_format = markup_format
 		self.content = content
 		self.properties = properties
 		self.rendered = False
+		self.rendered_wo_layout = False
 		self.page_type = page_type
 		self.metadata = False
+		self.layout_template = layout_template
 		self.extract_metadata()
+		self.render()
 	def as_dict(self):
 		return {
 			"name"     : self.name,
 			"title"    : self.metadata['title'],
 			"date"     : self.metadata['date'],
 			"tags"     : self.metadata['tags'],
-			"content"  : self.rendered,
+			"content"  : self.rendered_wo_layout,
 			"metadata" : self.metadata
 		}
 	def extract_metadata(self):
@@ -48,10 +51,12 @@ class Renderable:
 				props['date'] = None
 			if not 'tags' in props:
 				props['tags'] = []
+			else:
+				props['tags'] = [ {"tag": x} for x in props['tags']]
 			self.metadata = props
 		return self.metadata
 	def render(self):
-		if not self.rendered:
+		if True: #not self.rendered and false:
 			page_rendered = re.sub('^\%.*$', '', self.content, 0, re.MULTILINE)
 			if self.markup_format == ".textile":
 				page_rendered = textile(page_rendered)
@@ -61,9 +66,11 @@ class Renderable:
 			props = dict(self.metadata.items() + self.properties.items())
 
 			props['body'] = page_rendered
-			props['body'] = pystache.render(self.page_layout, props)
+			props['body'] = pystache.render(self.page_template, props)
 			# This step is done incase self.content has markup in it
 			props['body'] = pystache.render(props['body'], props)
+			self.rendered_wo_layout = props['body']
+			props['body'] = pystache.render(self.layout_template, props)
 			self.rendered = props['body']
 		return self.rendered
 
@@ -97,7 +104,7 @@ class Gus(object):
 			self.properties["last_5_%s" % page_type] = [ x.as_dict() for x in self.pages[page_type][:5] ]
 
 			# Allow the templates to get a list of tags and associated pages
-			tags = set([ tag for page in self.pages[page_type] for tag in page.metadata['tags'] ] )
+			tags = set([ tag['tag'] for page in self.pages[page_type] for tag in page.metadata['tags'] ] )
 			self.properties["%s_tags" % page_type] = []
 			for tag in tags:
 				self.properties["%s_tags" % page_type].append({
@@ -126,6 +133,11 @@ class Gus(object):
 
 class GusFSAdapter(Gus):
 	def __init__(self, site_dir, dest_dir):
+		self.site_dir = site_dir
+		self.dest_dir = dest_dir
+	def reload_templates(self):
+		site_dir = self.site_dir
+		dest_dir = self.dest_dir
 		super(GusFSAdapter, self).__init__()
 		assert os.path.isdir(site_dir), "%s must be a dir" % site_dir
 		
@@ -172,13 +184,11 @@ class GusFSAdapter(Gus):
 		assert os.path.isfile(posts_template), "%s must be a file" % posts_template
 		with open(posts_template, 'r') as f:
 			self.templates['posts'] = f.read()
-		self.templates['posts'] = pystache.render(self.templates['layout'], { 'body': self.templates['posts'] })
 		
 		top_level_template     = os.path.join(templates_path, "top-level.mustache")
 		assert os.path.isfile(top_level_template), "%s must be a file" % top_level_template
 		with open(top_level_template, 'r') as f:
 			self.templates['top-level'] = f.read()
-		self.templates['top-level'] = pystache.render(self.templates['layout'], { 'body': self.templates['top-level'] })
 
 	def render_pages(self):
 		for rend in self.renderable:
@@ -191,6 +201,7 @@ class GusFSAdapter(Gus):
 
 	# This method loads all of the pages into memory
 	def load_pages(self):
+		self.reload_templates()
 		for page_type, info in self.page_types.items():
 			base_name = self.path[page_type]
 			for dirname, dirnames, filenames in os.walk(base_name):
@@ -210,7 +221,7 @@ class GusFSAdapter(Gus):
 					with open(filename, 'r') as f:
 						content = f.read()
 					print "renderable %s" % name
-					r = Renderable(name, self.templates[page_type], markup_format, content, self.properties, page_type)
+					r = Renderable(name, self.templates[page_type], self.templates['layout'], markup_format, content, self.properties, page_type)
 					self.renderable.append(r)
 
 	# This is the eq of doing cp -r directory/* other-dir

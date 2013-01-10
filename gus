@@ -23,7 +23,9 @@ args = parser.parse_args()
 
 gus = GusFSAdapter(args.src_dest['src'], args.src_dest['dest'])
 
+gus.render_site()
 if args.watch:
+	print "Waiting on edits"
 	event_handler = WDEventHandler(gus)
 	observer = Observer()
 	observer.schedule(event_handler, path=args.src_dest['src'], recursive=True)
@@ -34,5 +36,3 @@ if args.watch:
 	except KeyboardInterrupt:
 		observer.stop()
 	observer.join()
-else:
-	gus.render_site()

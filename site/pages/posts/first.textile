@@ -1,29 +1,19 @@
 %title First Post!
-%date 2013-01-07
-%tags ideas blog rambles
+%date 2013-01-10
+%tags ideas blog rambles gus
 
-h2. markItUp! Universal markup editor
+It's incredibly hard to start writing, I find.  Once started, however, it becomes easier once started.  I'll love to talk about a lot of things, but those will all come later.  Right now I guess I'll focus on why I'm writing Gus. I always have some thoughts I'd like to share with people, but don't really have a good place to put them.  Being a programmer with (too much) pride, I couldn't just install "Drupal":http://drupal.org/ or "Wordpress":http://wordpress.org/ or use the "Wordpress":http://wordpress.com/ and "Blogger":http://www.blogger.com/ services.
 
-!../markitup/preview/picture.png(markItUp! Logo)!
+h4. Gus
 
-*markItUp!* is a javascript over "jQuery(jQuery Website)":http://www.jquery.com plug-in which allow you to turn any textarea in a markup editor.
+Gus is a utility that allows a website to be specified by 3 layouts, one main layout, a layout for top-level pages, and a layout for posts.  (The top-level and posts layouts themselves are put into the main layout). The layout files are "Mustache":http://mustache.github.com/ templates. Each of the top-level pages (404, index, posts index, about, &c) and all of the posts are stored as "Textile":http://textile.thresholdstate.com/ or "MarkDown":http://daringfireball.net/projects/markdown/. (The Textile and MarkDown files may contain Mustache templating as well.) .
 
-*markItUp!* is a lightweight fully customizable engine made to easily fit all developers needs in their CMS, blogs, forums or websites.
+Gus was also my first, real "Python":http://python.org/ program.  I'll leave that for another post, but it was a good way, I feel, to learn and play with the language.
 
-_Html, Textile, Wiki Syntax, Markdown, BBcode_ or even your own Markup system can be easily implemented.
+There were two factors at work as to why I wrote Gus.  The first is that I felt like writing a blogging engine is something I can do myself. The second is that I felt very awkward having to have tons of "PHP":http://php.net/ and a database running for what amounts to static files.  The third is that I like "VIM":http://www.vim.org/, "git":http://git-scm.com/, and Textile.  All of this came together as the inspiration for Gus.  I'm happy with it so far, but there are still things I'd like to add; perhaps in my "free" time.
 
-* integrate it easily
-* customize buttons and macros to fit all your need
-* customize keyboard shortcuts
-* customize toolbar and css look and feel
-** skins
-** icons
-** dropdown menus
-** separators
-* use the engine from anywhere in the page
-* implement any markup language even your own
-* implement your own javascript macros even the most advanced
-* allow multi-line edition
-* preview ajax result dynamically in any markup parser
-* offers userfriendly experience and effectiveness
+Don't get me wrong, sometimes a lot of PHP is necessary, for instace when I finally finish "RedColony":http://redcolony.com, It'll have a lot of backend work because a discussion board is a heavy presence there as well as having multiple people, not all of whole are computer savvy, will be submitting and using it.  This blog, however, will almost entirely be static (except the search engine when I finish it, as Gus will precompute the index and the search file will simply load and go, making the search program very small).
 
+The quickest way to get a feel for Gus is to open up a terminal to the directory you've downloaded it from and run @./gus site:site/rendered@ and then go to @(dir gus is in)/site/rendered/index.html@ in your browser.
+
+Gus has "watch" functionally akin ot "SASS":http://sass-lang.com/ where as files are edited, the project is rerendered automatially, just use the @-w@ option
