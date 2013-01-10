@@ -53,6 +53,7 @@ class Renderable:
 				props['tags'] = []
 			else:
 				props['tags'] = [ {"tag": x} for x in props['tags']]
+			props['name'] = self.name
 			self.metadata = props
 		return self.metadata
 	def render(self):

@@ -1,1 +1,2 @@
+%about_page True
 I'm here to help you. Please read the documentation and have fun! I want to make it easy for you to write and publish!

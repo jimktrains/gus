@@ -1,6 +1,7 @@
 %title First Post!
 %date 2013-01-10
 %tags ideas blog rambles gus
+%posts_page True
 
 It's incredibly hard to start writing, I find.  Once started, however, it becomes easier once started.  I'll love to talk about a lot of things, but those will all come later.  Right now I guess I'll focus on why I'm writing Gus. I always have some thoughts I'd like to share with people, but don't really have a good place to put them.  Being a programmer with (too much) pride, I couldn't just install "Drupal":http://drupal.org/ or "Wordpress":http://wordpress.org/ or use the "Wordpress":http://wordpress.com/ and "Blogger":http://www.blogger.com/ services.
 

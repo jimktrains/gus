@@ -1,3 +1,4 @@
+%posts_page True
 {{#posts}}
 <div>
 	<div><a href="{{name}}">{{title}}</a></div>

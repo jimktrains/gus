@@ -42,9 +42,9 @@
           <a class="brand" href="/">{{blog-title}}</a>
           <div class="nav-collapse collapse">
             <ul class="nav">
-              <li class="active"><a href="/">Home</a></li>
-              <li><a href="/posts">Posts</a></li>
-              <li><a href="/about">About</a></li>
+              <li class="{{^posts_page}}{{^about_page}}active{{/about_page}}{{/posts_page}}"><a href="/">Home</a></li>
+              <li class="{{#posts_page}}active{{/posts_page}}"><a href="/posts">Posts</a></li>
+              <li class="{{#about_page}}active{{/about_page}}"><a href="/about">About</a></li>
             </ul>
           </div><!--/.nav-collapse -->
         </div>
