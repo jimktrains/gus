@@ -8,7 +8,7 @@ Run the example by `./gus -w site:rendered` and as you make changes, the site wi
 
 # Implemented
 
-* `/templates/layout.mustache` + `/templates/articles.mustache` + `/pages/articles/<name>.textile` -> /`<name>`.html (name may contain a subdir)
+* `/templates/layout.mustache` + `/templates/articles.mustache` + `/pages/articles/<name>.textile` -> /posts/`<name>`.html (name may contain a subdir)
 * `/templates/layout.mustache` + `/templates/top-level.mustache` + `/pages/top-level/<name>.textile` -> /`<name>`.html (name may contain subdir)
 * properties.yml -> not rendered to anything
 * /assets/`<name>` -> /`<name>` (may contain subdir)
@@ -16,7 +16,7 @@ Run the example by `./gus -w site:rendered` and as you make changes, the site wi
 # To be implemented
 
 * /templates/search.mustache -> /search
-* /templates/search-results.mustache -> /search?q=<query>
+* /templates/search-results.mustache -> /search?q=query
  * Will require pre-computing statistics and indexes
 
 # Format for articles
