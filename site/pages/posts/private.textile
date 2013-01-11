@@ -1,0 +1,5 @@
+%title This is private
+%date 2012-01-10
+%private true
+
+Private file

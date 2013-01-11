@@ -5,5 +5,7 @@ blog-title: My Musings
 page-types:
    posts:
       web-directory: /posts
+   reviews:
+      web-directory: /language-reviews
    top-level:
       web-directory: /
