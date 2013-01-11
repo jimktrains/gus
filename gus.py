@@ -192,6 +192,7 @@ class GusFSAdapter(Gus):
 
 		assert 'page-types' in self.properties, "'page-types' must be defined in properties.yml"
 		self.page_types = self.properties['page-types']
+		assert 'date-format' in self.properties, "'date-format' must be defined in properties.yml. See http://docs.python.org/2/library/time.html#time.strftime"
 		
 		pages_path      = os.path.join(site_dir, "pages")
 		assert os.path.isdir(pages_path), "%s must be a dir" % pages_path
