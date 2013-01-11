@@ -45,9 +45,10 @@ Gus assumes that there are 3 directories in your site folder:
 * pages
 * templates
 
-and one file
+and two files
 
 * properties.yml
+* templates/layout.mustache
 
 the contents of properties.yml is visible too the mustache templates.
 
@@ -57,12 +58,22 @@ Gus also assumes that there is a `page-types` entry in properties.yml. Beneath `
 page-types:
    posts:
       web-directory: /posts
+      indices:
+         tags: 
+            over: tags
+            web-directory: /posts/tags
+         date:
+            over:
+               - date-year
+               - date-month
+               - date-day
+            web-directory: /posts/by-date
    top-level:
       web-directory: /
 ```
 
-eventually post-processing (e.g. minification) will also be able to be specified in this structure.
+Indexes generated from metadata can be specified here too. `web-directory` is the directory the index will be placed in, named after `over`. For instances, all posts with a tag of "idea" will be placed in /posts/tags/idea according to the above.  Composite indices, date in the above example, have an "over" specified by an array as opposed to a single field.  More on those when they are implemented
 
-For each type listed, there is assumed to be a folder of the same name in pages/ and a file of the same name in templates/.
+Eventually post-processing (e.g. minification) will also be able to be specified in this structure.
 
-There is also assumed to be a file called templates/layout.mustache that is used as the main site layout.
+For each type listed, there is assumed to be a folder of the same name in pages/ and a file of the same name in templates/. Each index has a template named "(page-type)-index-(index-name).mustache".
