@@ -59,22 +59,30 @@ class Renderable:
 			self.metadata = props
 		return self.metadata
 	def render(self):
-		if True: #not self.rendered and false:
-			page_rendered = re.sub('^\%.*$', '', self.content, 0, re.MULTILINE)
-			if self.markup_format == ".textile":
-				page_rendered = textile(page_rendered)
-			elif self.markup_format == ".md":
-				page_rendered = markdown(page_rendered)
+		# Remove all lines begining with % because those
+		# are our metadata lines (and I guess could be used
+		# as comments in the template because of how I do this)
+		page_rendered = re.sub('^\%.*$', '', self.content, 0, re.MULTILINE)
 
-			props = dict(self.metadata.items() + self.properties.items())
+		props = dict(self.metadata.items() + self.properties.items())
 
-			props['body'] = page_rendered
-			props['body'] = pystache.render(self.page_template, props)
-			# This step is done incase self.content has markup in it
-			props['body'] = pystache.render(props['body'], props)
-			self.rendered_wo_layout = props['body']
-			props['body'] = pystache.render(self.layout_template, props)
-			self.rendered = props['body']
+		# Render the page with mustache
+		# Then the page is rendered with the markup (textile or markdown)
+		props['body'] = page_rendered
+		props['body'] = pystache.render(props['body'], props)
+		if self.markup_format == ".textile":
+			props['body'] = textile(props['body'])
+		elif self.markup_format == ".md":
+			props['body'] = markdown(props['body'])
+		# Now we render the page into its page-template
+		props['body'] = pystache.render(self.page_template, props)
+		# The page rendered into the page-template is what's used
+		# is the value used in further mustache templates
+		self.rendered_wo_layout = props['body']
+		# The page rendered into the page-templates is then
+		# rendered into the site layout.
+		props['body'] = pystache.render(self.layout_template, props)
+		self.rendered = props['body']
 		return self.rendered
 
 
@@ -90,7 +98,7 @@ class Gus(object):
 	def calculate_properties(self):
 		self.properties['current_time'] = time.time();
 		for page_type, info in self.page_types.items():
-			# Sort the pages by date
+			# Sort the pages by date and exclude private pages
 			self.pages[page_type] = [ x for x in self.renderable if ( x.page_type == page_type and x.metadata['private'] == False ) ]
 			self.pages[page_type].sort( key = lambda page : page.metadata['date'], reverse=True)
 
@@ -108,7 +116,7 @@ class Gus(object):
 				})
 
 	def get_web_path(self, page_type, name):
-		return os.path.sep + os.path.join(self.page_types[page_type]['web-directory'][1:], name)
+		return os.path.join(self.page_types[page_type]['web-directory'], name)
 
 	# This method goes through all of the steps to completly
 	# render a site, and then resets the object the make sure
@@ -120,6 +128,8 @@ class Gus(object):
 		self.copy_assets()
 		self.finalize()
 		# The rest of this basically resets the object
+		# This was useful before I had the reload_templates method
+		# I need to see if it's still necessary
 		self.renderable = []
 		self.pages = {}
 		self.properties = copy.deepcopy(self.original_properties)
@@ -186,6 +196,7 @@ class GusFSAdapter(Gus):
 
 	def render_pages(self):
 		for rend in self.renderable:
+			# Remove that first character from rend.name because it's a /
 			dest_file = os.path.join(self.rendered_path, rend.name[1:] + ".html")
 			dest_file_dir = os.path.dirname(dest_file)
 			if not os.path.isdir(dest_file_dir):

@@ -1,4 +1,7 @@
 %posts_page True
+
+Time: *{{current_time}}*
+
 {{#posts}}
 <div>
 	<div><a href="{{name}}">{{title}}</a></div>
