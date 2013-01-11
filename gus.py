@@ -49,6 +49,8 @@ class Renderable:
 				props['title'] = self.name
 			if not 'date' in props:
 				props['date'] = None
+			if not 'private' in props:
+				props['private'] = False
 			if not 'tags' in props:
 				props['tags'] = []
 			else:
@@ -89,7 +91,7 @@ class Gus(object):
 		self.properties['current_time'] = time.time();
 		for page_type, info in self.page_types.items():
 			# Sort the pages by date
-			self.pages[page_type] = [ x for x in self.renderable if x.page_type == page_type ]
+			self.pages[page_type] = [ x for x in self.renderable if ( x.page_type == page_type and x.metadata['private'] == False ) ]
 			self.pages[page_type].sort( key = lambda page : page.metadata['date'], reverse=True)
 
 			# Allow the templates to see all the pages

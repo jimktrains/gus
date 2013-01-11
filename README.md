@@ -30,6 +30,7 @@ Some default keys are
 * title
 * date
 * tags (space separated)
+* private (won't show page in indexes)
 
 The keys are available in the mustache environment when render both the page and layout.
 
