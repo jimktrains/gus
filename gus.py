@@ -80,14 +80,6 @@ class Gus(object):
 	def __init__(self):
 		self.renderable = []
 		self.pages = {}
-		self.page_types = {
-			"posts": {
-				"final_path": 'posts'
-			},
-			"top-level": {
-				"final_path": ''
-			}
-		}
 
 	# This needs a better name
 	# basically it calculates all the lists of all the pages
@@ -114,9 +106,9 @@ class Gus(object):
 				})
 
 	def get_web_path(self, page_type, name):
-		return os.path.sep + os.path.join(self.page_types[page_type]['final_path'], name)
+		return os.path.sep + os.path.join(self.page_types[page_type]['web-directory'][1:], name)
 
-# This method goes through all of the steps to completly
+	# This method goes through all of the steps to completly
 	# render a site, and then resets the object the make sure
 	# it's good to call again
 	def render_site(self):
@@ -136,6 +128,7 @@ class GusFSAdapter(Gus):
 	def __init__(self, site_dir, dest_dir):
 		self.site_dir = site_dir
 		self.dest_dir = dest_dir
+
 	def reload_templates(self):
 		site_dir = self.site_dir
 		dest_dir = self.dest_dir
@@ -147,10 +140,17 @@ class GusFSAdapter(Gus):
 		with open(properties_file, 'r') as f:
 			self.properties = yaml.load(f)
 		self.original_properties = copy.deepcopy(self.properties)
+
+		assert 'page-types' in self.properties, "'page-types' must be defined in properties.yml"
+		self.page_types = self.properties['page-types']
 		
 		pages_path      = os.path.join(site_dir, "pages")
 		assert os.path.isdir(pages_path), "%s must be a dir" % pages_path
 		self.pages_path = pages_path
+
+		templates_path  = os.path.join(site_dir, "templates")
+		assert os.path.isdir(templates_path), "%s must be a dir" % templates_path
+		self.templates_path = templates_path
 		
 		assets_path     = os.path.join(site_dir, "assets")
 		assert os.path.isdir(assets_path), "%s must be a dir" % assets_path
@@ -160,36 +160,27 @@ class GusFSAdapter(Gus):
 		assert os.path.isdir(rendered_path), "%s must be a dir" % rendered_path
 		assert os.access(rendered_path, os.W_OK), "%s must be writable" % rendered_path
 		self.final_rendered_path = rendered_path
+		# Let's not be too destructive right out of the box
+		# We'll render into a temp directory and then move it over
 		self.rendered_path = tempfile.mkdtemp()
 		
-		self.path = {}
-		posts_path      = os.path.join(pages_path, "posts")
-		assert os.path.isdir(posts_path), "%s must be a dir" % posts_path
-		self.path['posts'] = posts_path
-		
-		top_level_path         = os.path.join(pages_path, "top-level")
-		assert os.path.isdir(top_level_path), "%s must be a dir" % top_level_path
-		self.path['top-level'] = top_level_path
-		
-		templates_path  = os.path.join(site_dir, "templates")
-		assert os.path.isdir(templates_path), "%s must be a dir" % templates_path
-		self.templates_path = templates_path
-
+		self.path      = {}
 		self.templates = {}
+
+		for page_type in self.page_types:
+			page_path = os.path.join(pages_path, page_type)
+			assert os.path.isdir(page_path), "%s must be a dir" % page_path
+			self.path[page_type] = page_path
+
+			page_template = os.path.join(templates_path, "%s.mustache" % page_type)
+			assert os.path.isfile(page_template), "%s must be a file" % page_template
+			with open(page_template, 'r') as f:
+				self.templates[page_type] = f.read()
+
 		layout_template = os.path.join(templates_path, "layout.mustache")
 		assert os.path.isfile(layout_template), "%s must be a file" % layout_template
 		with open(layout_template, 'r') as f:
 			self.templates['layout'] = f.read()
-		
-		posts_template  = os.path.join(templates_path, "post.mustache")
-		assert os.path.isfile(posts_template), "%s must be a file" % posts_template
-		with open(posts_template, 'r') as f:
-			self.templates['posts'] = f.read()
-		
-		top_level_template     = os.path.join(templates_path, "top-level.mustache")
-		assert os.path.isfile(top_level_template), "%s must be a file" % top_level_template
-		with open(top_level_template, 'r') as f:
-			self.templates['top-level'] = f.read()
 
 	def render_pages(self):
 		for rend in self.renderable:
@@ -222,7 +213,15 @@ class GusFSAdapter(Gus):
 					with open(filename, 'r') as f:
 						content = f.read()
 					print "renderable %s" % name
-					r = Renderable(name, self.templates[page_type], self.templates['layout'], markup_format, content, self.properties, page_type)
+					r = Renderable(
+						name,
+						self.templates[page_type],
+						self.templates['layout'],
+						markup_format,
+						content,
+						self.properties,
+						page_type
+					)
 					self.renderable.append(r)
 
 	# This is the eq of doing cp -r directory/* other-dir

@@ -1,4 +1,9 @@
 author:
- name: Jim Keener
- contact: jim@jimkeener.com
+   name: Jim Keener
+   contact: jim@jimkeener.com
 blog-title: My Musings
+page-types:
+   posts:
+      web-directory: /posts
+   top-level:
+      web-directory: /
