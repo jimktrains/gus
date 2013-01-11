@@ -2,6 +2,7 @@ author:
    name: Jim Keener
    contact: jim@jimkeener.com
 blog-title: My Musings
+date-format: "%Y-%m-%d"
 page-types:
    posts:
       web-directory: /posts
