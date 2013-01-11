@@ -10,10 +10,11 @@ import shutil
 import tempfile
 import time
 import yaml
+from datetime import datetime
 
 class Renderable:
 	# Name should not contain an extention
-	def __init__(self, name, page_template, layout_template, markup_format, content, properties, page_type):
+	def __init__(self, name, page_template, layout_template, markup_format, content, properties, page_type, metadata = False):
 		self.name = name
 		self.page_template = page_template
 		self.markup_format = markup_format
@@ -22,7 +23,7 @@ class Renderable:
 		self.rendered = False
 		self.rendered_wo_layout = False
 		self.page_type = page_type
-		self.metadata = False
+		self.metadata = metadata
 		self.layout_template = layout_template
 		self.extract_metadata()
 		self.render()
@@ -48,13 +49,24 @@ class Renderable:
 			if not 'title' in props:
 				props['title'] = self.name
 			if not 'date' in props:
-				props['date'] = None
+				props['date']       = None
+				props['date-year']  = None
+				props['date-month'] = None
+				props['date-day']   = None
+			else:
+				# I'm not a fan of this
+				props['date']       = datetime.strptime(props['date'], self.properties['date-format'])
+				props['date-year']  = props['date'].timetuple()[0]
+				props['date-month'] = props['date'].timetuple()[1]
+				props['date-day']   = props['date'].timetuple()[2]
+				props['date']       = props['date'].strftime(self.properties['date-format'])
 			if not 'private' in props:
 				props['private'] = False
 			if not 'tags' in props:
 				props['tags'] = []
 			else:
-				props['tags'] = [ {"tag": x} for x in props['tags']]
+				pass
+				#props['tags'] = [ {"tag": x} for x in props['tags']]
 			props['name'] = self.name
 			self.metadata = props
 		return self.metadata
@@ -62,7 +74,9 @@ class Renderable:
 		# Remove all lines begining with % because those
 		# are our metadata lines (and I guess could be used
 		# as comments in the template because of how I do this)
-		page_rendered = re.sub('^\%.*$', '', self.content, 0, re.MULTILINE)
+		page_rendered = ""
+		if self.content is not None:
+			page_rendered = re.sub('^\%.*$', '', self.content, 0, re.MULTILINE)
 
 		props = dict(self.metadata.items() + self.properties.items())
 
@@ -97,23 +111,46 @@ class Gus(object):
 	# Later on it'll calculate rf-idf and tag clouds and the such
 	def calculate_properties(self):
 		self.properties['current_time'] = time.time();
+		self.properties["indices"] = {}
+	
+		for page_type, info in self.page_types.items():
+			self.pages[page_type] = []
+		for page in self.renderable:
+			if page.metadata['private']:
+				continue
+			self.pages[page.page_type].append(page)
+
 		for page_type, info in self.page_types.items():
 			# Sort the pages by date and exclude private pages
-			self.pages[page_type] = [ x for x in self.renderable if ( x.page_type == page_type and x.metadata['private'] == False ) ]
 			self.pages[page_type].sort( key = lambda page : page.metadata['date'], reverse=True)
 
 			# Allow the templates to see all the pages
 			self.properties[page_type] = [ x.as_dict() for x in self.pages[page_type] ]
 			self.properties["last_5_%s" % page_type] = [ x.as_dict() for x in self.pages[page_type][:5] ]
 
-			# Allow the templates to get a list of tags and associated pages
-			tags = set([ tag['tag'] for page in self.pages[page_type] for tag in page.metadata['tags'] ] )
-			self.properties["%s_tags" % page_type] = []
-			for tag in tags:
-				self.properties["%s_tags" % page_type].append({
-					'tag':      tag,
-					'pages': [ x.as_dict() for x in self.pages[page_type] if tag in x.metadata['tags'] ]
-				})
+			self.properties['indices'][page_type] = {}
+			if 'indices' in info:
+				for index_name, index_info in info['indices'].items():
+					self.properties['indices'][page_type][index_name] = {}
+					if isinstance(index_info['over'], list):
+						pass # composite index. We'll get to these later
+					else:
+						# Allow the templates to get a list of tags and associated pages
+						uniques = set([ u for page in self.pages[page_type] for u in page.metadata[index_info['over']] ] )
+						self.properties["%s_%s" % (page_type, index_info['over'])] = []
+						for u in uniques:
+							self.properties['indices'][page_type][index_name][u] = \
+								[ x.as_dict() for x in self.pages[page_type] if u in x.metadata[index_info['over']] ]
+							self.renderable.append(Renderable(
+								"%s/%s" % (index_info['web-directory'], u),
+								self.templates['indices'][page_type][index_name],
+								self.templates['layout'],
+								None,
+								None,
+								self.properties,
+								"index",
+								{ 'pages': self.properties['indices'][page_type][index_name][u] }
+							))
 
 	def get_web_path(self, page_type, name):
 		return os.path.join(self.page_types[page_type]['web-directory'], name)
@@ -177,9 +214,9 @@ class GusFSAdapter(Gus):
 		self.rendered_path = tempfile.mkdtemp()
 		
 		self.path      = {}
-		self.templates = {}
+		self.templates = { 'indices': {} }
 
-		for page_type in self.page_types:
+		for page_type, info in self.page_types.items():
 			page_path = os.path.join(pages_path, page_type)
 			assert os.path.isdir(page_path), "%s must be a dir" % page_path
 			self.path[page_type] = page_path
@@ -188,6 +225,16 @@ class GusFSAdapter(Gus):
 			assert os.path.isfile(page_template), "%s must be a file" % page_template
 			with open(page_template, 'r') as f:
 				self.templates[page_type] = f.read()
+			if 'indices' in info:
+				self.templates['indices'][page_type] = {}
+				for index_name, index_info in info['indices'].items():
+					if isinstance(index_info['over'], list):
+						pass # combined index. We'll deal with this later
+					else:
+						page_template = os.path.join(templates_path, "%s-index-%s.mustache" % (page_type, index_name))
+						assert os.path.isfile(page_template), "%s must be a file" % page_template
+						with open(page_template, 'r') as f:
+							self.templates['indices'][page_type][index_name] = f.read()
 
 		layout_template = os.path.join(templates_path, "layout.mustache")
 		assert os.path.isfile(layout_template), "%s must be a file" % layout_template
