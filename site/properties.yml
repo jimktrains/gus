@@ -5,6 +5,16 @@ blog-title: My Musings
 page-types:
    posts:
       web-directory: /posts
+      indices:
+         tags: 
+            over: tags
+            web-directory: /posts/tags
+         date:
+            over:
+               - date-year
+               - date-month
+               - date-day
+            web-directory: /posts/by-date
    reviews:
       web-directory: /language-reviews
    top-level:
