@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from argparse import ArgumentParser, ArgumentTypeError
-from gus import GusFSAdapter
+from gus import GusFSLoader, Gus
 from watchdog.events import LoggingEventHandler, FileSystemEventHandler
 from watchdog.observers import Observer
 from wdeventhandler import WDEventHandler
@@ -21,12 +21,13 @@ parser.add_argument("src_dest", metavar="src_dir:dest_dir", type=src_dest_argtyp
 
 args = parser.parse_args()
 
-gus = GusFSAdapter(args.src_dest['src'], args.src_dest['dest'])
+gus = Gus()
+gus_loader = GusFSLoader(args.src_dest['src'], args.src_dest['dest'], gus)
 
-gus.render_site()
+gus_loader.render_site()
 if args.watch:
 	print "Waiting on edits"
-	event_handler = WDEventHandler(gus)
+	event_handler = WDEventHandler(gus_loader)
 	observer = Observer()
 	observer.schedule(event_handler, path=args.src_dest['src'], recursive=True)
 	observer.start()
