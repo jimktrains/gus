@@ -29,7 +29,8 @@ page-types:
       web-directory: /posts
       indices:
          tags: 
-            over: tags
+            over:
+               - tags
             web-directory: /posts/tags
          date:
             over:
@@ -41,7 +42,7 @@ page-types:
       web-directory: /
 ```
 
-Indexes generated from metadata can be specified here too. `web-directory` is the directory the index will be placed in, named after `over`. For instances, all posts with a tag of "idea" will be placed in /posts/tags/idea according to the above.  Composite indices, date in the above example, have an "over" specified by an array as opposed to a single field.  More on those when they are implemented
+Indexes generated from metadata can be specified here too. `web-directory` is the directory the index will be placed in, named after `over`. For instances, all posts with a tag of "idea" will be placed in /posts/tags/idea according to the above.  Composite indices, date in the above example, have an "over" specified by an array as opposed to a single field. If more than one field is specified, then indexes are created for each "layer". For instance, in the above example a /2013.html will be created, a /2013/01.html and a /2013/01/11.html will be created.  Each has the pages that match the criteria.
 
 Eventually post-processing (e.g. minification) will also be able to be specified in this structure.
 
