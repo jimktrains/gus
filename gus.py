@@ -24,17 +24,18 @@ class Renderable:
         self.rendered_wo_layout = False
         self.page_type = page_type
         self.metadata = metadata
+        self.check_metadata()
         self.layout_template = layout_template
         self.extract_metadata()
         self.render()
     def as_dict(self):
         return {
-            "name"     : self.name,
-            "title"    : self.metadata['title'],
-            "date"     : self.metadata['date'],
-            "tags"     : self.metadata['tags'],
-            "content"  : self.rendered_wo_layout,
-            "metadata" : self.metadata
+            "name":     self.name,
+            "title":    self.metadata['title'],
+            "date":     self.metadata['date'],
+            "tags":     self.metadata['tags'],
+            "content":  self.rendered_wo_layout,
+            "metadata": self.metadata
         }
     def extract_metadata(self):
         if not self.metadata:
@@ -43,32 +44,37 @@ class Renderable:
             for match in meta:
                 name = match.group(1)
                 val  = match.group(2)
+                # Tags are the exception to properties just
+                # being a string.
                 if name == 'tags':
                     val = val.split(' ')
                 props[name] = val
             self.metadata = props
-        if not 'title' in self.metadata:
-            self.metadata['title'] = None
-        if not 'date' in self.metadata:
-            self.metadata['date']       = None
-            self.metadata['date-year']  = None
-            self.metadata['date-month'] = None
-            self.metadata['date-day']   = None
-        else:
-            # I'm not a fan of this
-            self.metadata['date']       = datetime.strptime(self.metadata['date'], self.properties['date-format'])
-            self.metadata['date-year']  = str(self.metadata['date'].timetuple()[0])
-            self.metadata['date-month'] = "%02d" % self.metadata['date'].timetuple()[1]
-            self.metadata['date-day']   = "%02d" % self.metadata['date'].timetuple()[2]
-            self.metadata['date']       = self.metadata['date'].strftime(self.properties['date-format'])
-        if not 'private' in self.metadata:
-            self.metadata['private'] = False
-        if not 'tags' in self.metadata:
-            self.metadata['tags'] = []
-        if not 'nolayout' in self.metadata:
-            self.metadata['nolayout'] = False
-        self.metadata['name'] = self.name
+            self.check_metadata()
         return self.metadata
+    def check_metadata(self):
+        if self.metadata or self.metadata == {}:
+            if not 'title' in self.metadata:
+                self.metadata['title'] = None
+            if not 'date' in self.metadata:
+                self.metadata['date']       = None
+                self.metadata['date-year']  = None
+                self.metadata['date-month'] = None
+                self.metadata['date-day']   = None
+            else:
+                # I'm not a fan of this
+                self.metadata['date']       = datetime.strptime(self.metadata['date'], self.properties['date-format'])
+                self.metadata['date-year']  = str(self.metadata['date'].timetuple()[0])
+                self.metadata['date-month'] = "%02d" % self.metadata['date'].timetuple()[1]
+                self.metadata['date-day']   = "%02d" % self.metadata['date'].timetuple()[2]
+                self.metadata['date']       = self.metadata['date'].strftime(self.properties['date-format'])
+            if not 'private' in self.metadata:
+                self.metadata['private'] = False
+            if not 'tags' in self.metadata:
+                self.metadata['tags'] = []
+            if not 'nolayout' in self.metadata:
+                self.metadata['nolayout'] = False
+            self.metadata['name'] = self.name
     def render(self):
         # Remove all lines begining with % because those
         # are our metadata lines (and I guess could be used
@@ -112,7 +118,7 @@ class Gus(object):
     def calculate_properties(self):
         self.properties['current_time'] = time.time();
         self.properties["indices"] = {}
-    
+
         for page_type, info in self.page_types.items():
             self.pages[page_type] = []
         for page in self.renderable:
@@ -125,51 +131,55 @@ class Gus(object):
             self.pages[page_type].sort( key = lambda page : page.metadata['date'], reverse=True)
 
             # Allow the templates to see all the pages
-            self.properties[page_type] = [ x.as_dict() for x in self.pages[page_type] ]
-            self.properties["last_5_%s" % page_type] = [ x.as_dict() for x in self.pages[page_type][:5] ]
+            self.properties[page_type] = [x.as_dict() for x in self.pages[page_type]]
+            self.properties["last_5_%s" % page_type] = [x.as_dict() for x in self.pages[page_type][:5]]
 
             self.properties['indices'][page_type] = {}
             if 'indices' in info:
                 for index_name, index_info in info['indices'].items():
                     self.properties['indices'][page_type][index_name] = {}
-                    if isinstance(index_info['over'], list):
-                        for page in self.pages[page_type]:
-                            key = ""
-                            for over in index_info['over']:
-                                key += "/" + page.metadata[over]
-                                if not key in self.properties['indices'][page_type][index_name]:
-                                    self.properties['indices'][page_type][index_name][key] = []
-                                self.properties['indices'][page_type][index_name][key].append(page.as_dict())
-                        for key in self.properties['indices'][page_type][index_name]:
-                            self.renderable.append(Renderable(
-                                "%s%s" % (index_info['web-directory'], key),
-                                self.templates['indices'][page_type][index_name],
-                                self.templates['layout'],
-                                None,
-                                None,
-                                self.properties,
-                                "index",
-                                { 'pages': self.properties['indices'][page_type][index_name][key] }
-                            ))
-                    else:
-                        # Allow the templates to get a list of tags and associated pages
-                        uniques = set([ u for page in self.pages[page_type] for u in page.metadata[index_info['over']] ] )
-                        self.properties["%s_%s" % (page_type, index_info['over'])] = []
-                        for u in uniques:
-                            self.properties['indices'][page_type][index_name][u] = \
-                                [ x.as_dict() for x in self.pages[page_type] if u in x.metadata[index_info['over']] ]
-                            self.renderable.append(Renderable(
-                                "%s/%s" % (index_info['web-directory'], u),
-                                self.templates['indices'][page_type][index_name],
-                                self.templates['layout'],
-                                None,
-                                None,
-                                self.properties,
-                                "index",
-                                { 'pages': self.properties['indices'][page_type][index_name][u] }
-                            ))
+                    for page in self.pages[page_type]:
+                        keys = [""]
+                        for over in index_info['over']:
+                            metadata = page.metadata[over]
+                            # Tags are the only property that is a list
+                            # To make the rest of this method cleaner,
+                            # We will convert everything else to a list
+                            # and keep tags as is.
+                            if (over != "tags"):
+                                metadata = [metadata]
+                            new_keys = []
+                            for dataum in metadata:
+                                for key in keys:
+                                    key += "/" + dataum
+                                    new_keys.append(key)
+                                    if not key in self.properties['indices'][page_type][index_name]:
+                                        self.properties['indices'][page_type][index_name][key] = []
+                                    self.properties['indices'][page_type][index_name][key].append(page.as_dict())
+                            keys = new_keys
+                    for key in self.properties['indices'][page_type][index_name]:
+                        self.renderable.append(Renderable(
+                            self.get_index_path(page_type, index_name, key),
+                            self.get_index_template(page_type,index_name),
+                            self.get_site_template(),
+                            None, # There is no markup type
+                            None, # There is no content body
+                            self.properties,
+                            "index",
+                            { 'pages': self.properties['indices'][page_type][index_name][key] }
+                        ))
 
-    def get_web_path(self, page_type, name):
+    def get_site_template(self):
+        return self.templates['layout']
+    def get_index_template(self, page_type, index_name):
+        return self.templates['indices'][page_type][index_name]
+    def get_page_template(self, page_type):
+        return self.templates[page_type],
+    def get_index_path(self, page_type, index_name, name):
+        if name[0] == "/":
+            name = name[1:]
+        return os.path.join(self.page_types[page_type]['indices'][index_name]['web-directory'], name)
+    def get_page_path(self, page_type, name):
         return os.path.join(self.page_types[page_type]['web-directory'], name)
 
     # This method goes through all of the steps to completly
@@ -283,7 +293,7 @@ class GusFSAdapter(Gus):
                     rel_path = re.sub(base_name, '', filename)
                     rel_path = re.sub("^%s" % os.path.sep, '', rel_path)
                     name, markup_format = os.path.splitext(rel_path)
-                    name = self.get_web_path(page_type, name)
+                    name = self.get_page_path(page_type, name)
                     content = None
                     with open(filename, 'r') as f:
                         content = f.read()

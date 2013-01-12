@@ -8,7 +8,8 @@ page-types:
       web-directory: /posts
       indices:
          tags: 
-            over: tags
+            over:
+               - tags
             web-directory: /posts/tags
          date:
             over:
