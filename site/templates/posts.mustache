@@ -1,5 +1,5 @@
-<h2><a href="{{name}}">{{title}}</a></h2>
-<p>Date: {{date}}</p>
-<p>Tags:{{#tags}} <a href="/posts/tags/{{.}}">{{.}}</a>{{/tags}}</p>
+<h1><a href="{{name}}">{{title}}</a></h1>
+<p>Date: <a href="/posts/by-date/{{date-year}}">{{date-year}}</a>-<a href="/posts/by-date/{{date-year}}/{{date-month}}">{{date-month}}</a>-<a href="/posts/by-date/{{date-year}}/{{date-month}}/{{date-day}}">{{date-day}}</a><br>
+Tags:{{#tags}} <a href="/posts/tags/{{.}}">{{.}}</a>{{/tags}}</p>
 
 {{{body}}}

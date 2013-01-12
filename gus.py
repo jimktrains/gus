@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from datetime import datetime
 from markdown import markdown
 from textile import textile
 import copy
@@ -10,7 +11,6 @@ import shutil
 import tempfile
 import time
 import yaml
-from datetime import datetime
 
 class Renderable:
 	# Name should not contain an extention
@@ -46,29 +46,28 @@ class Renderable:
 				if name == 'tags':
 					val = val.split(' ')
 				props[name] = val
-			if not 'title' in props:
-				props['title'] = self.name
-			if not 'date' in props:
-				props['date']       = None
-				props['date-year']  = None
-				props['date-month'] = None
-				props['date-day']   = None
-			else:
-				# I'm not a fan of this
-				props['date']       = datetime.strptime(props['date'], self.properties['date-format'])
-				props['date-year']  = props['date'].timetuple()[0]
-				props['date-month'] = props['date'].timetuple()[1]
-				props['date-day']   = props['date'].timetuple()[2]
-				props['date']       = props['date'].strftime(self.properties['date-format'])
-			if not 'private' in props:
-				props['private'] = False
-			if not 'tags' in props:
-				props['tags'] = []
-			else:
-				pass
-				#props['tags'] = [ {"tag": x} for x in props['tags']]
-			props['name'] = self.name
 			self.metadata = props
+		if not 'title' in self.metadata:
+			self.metadata['title'] = None
+		if not 'date' in self.metadata:
+			self.metadata['date']       = None
+			self.metadata['date-year']  = None
+			self.metadata['date-month'] = None
+			self.metadata['date-day']   = None
+		else:
+			# I'm not a fan of this
+			self.metadata['date']       = datetime.strptime(self.metadata['date'], self.properties['date-format'])
+			self.metadata['date-year']  = str(self.metadata['date'].timetuple()[0])
+			self.metadata['date-month'] = "%02d" % self.metadata['date'].timetuple()[1]
+			self.metadata['date-day']   = "%02d" % self.metadata['date'].timetuple()[2]
+			self.metadata['date']       = self.metadata['date'].strftime(self.properties['date-format'])
+		if not 'private' in self.metadata:
+			self.metadata['private'] = False
+		if not 'tags' in self.metadata:
+			self.metadata['tags'] = []
+		if not 'nolayout' in self.metadata:
+			self.metadata['nolayout'] = False
+		self.metadata['name'] = self.name
 		return self.metadata
 	def render(self):
 		# Remove all lines begining with % because those
@@ -95,7 +94,8 @@ class Renderable:
 		self.rendered_wo_layout = props['body']
 		# The page rendered into the page-templates is then
 		# rendered into the site layout.
-		props['body'] = pystache.render(self.layout_template, props)
+		if not self.metadata['nolayout']:
+			props['body'] = pystache.render(self.layout_template, props)
 		self.rendered = props['body']
 		return self.rendered
 
@@ -133,7 +133,24 @@ class Gus(object):
 				for index_name, index_info in info['indices'].items():
 					self.properties['indices'][page_type][index_name] = {}
 					if isinstance(index_info['over'], list):
-						pass # composite index. We'll get to these later
+						for page in self.pages[page_type]:
+							key = ""
+							for over in index_info['over']:
+								key += "/" + page.metadata[over]
+								if not key in self.properties['indices'][page_type][index_name]:
+									self.properties['indices'][page_type][index_name][key] = []
+								self.properties['indices'][page_type][index_name][key].append(page.as_dict())
+						for key in self.properties['indices'][page_type][index_name]:
+							self.renderable.append(Renderable(
+								"%s%s" % (index_info['web-directory'], key),
+								self.templates['indices'][page_type][index_name],
+								self.templates['layout'],
+								None,
+								None,
+								self.properties,
+								"index",
+								{ 'pages': self.properties['indices'][page_type][index_name][key] }
+							))
 					else:
 						# Allow the templates to get a list of tags and associated pages
 						uniques = set([ u for page in self.pages[page_type] for u in page.metadata[index_info['over']] ] )
@@ -229,13 +246,10 @@ class GusFSAdapter(Gus):
 			if 'indices' in info:
 				self.templates['indices'][page_type] = {}
 				for index_name, index_info in info['indices'].items():
-					if isinstance(index_info['over'], list):
-						pass # combined index. We'll deal with this later
-					else:
-						page_template = os.path.join(templates_path, "%s-index-%s.mustache" % (page_type, index_name))
-						assert os.path.isfile(page_template), "%s must be a file" % page_template
-						with open(page_template, 'r') as f:
-							self.templates['indices'][page_type][index_name] = f.read()
+					page_template = os.path.join(templates_path, "%s-index-%s.mustache" % (page_type, index_name))
+					assert os.path.isfile(page_template), "%s must be a file" % page_template
+					with open(page_template, 'r') as f:
+						self.templates['indices'][page_type][index_name] = f.read()
 
 		layout_template = os.path.join(templates_path, "layout.mustache")
 		assert os.path.isfile(layout_template), "%s must be a file" % layout_template
