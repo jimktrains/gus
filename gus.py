@@ -105,10 +105,66 @@ class Renderable:
         self.rendered = props['body']
         return self.rendered
 
+class Page:
+    def __init__(self, page_type, name, content, markup_format):
+        self.page_type = page_type
+        self.name      = name
+        self.content   = content
+        self.markup_format = markup_format
+        if self.markup_format == ".textile":
+            self.markup_renderer = textile
+        elif self.markup_format == ".md":
+            self.markup_renderer = markdown
+        self.extract_metadata()
+    def extract_metadata(self):
+        if not self.metadata:
+            meta = re.finditer( '^%(\S*) (.*)$', self.content, re.MULTILINE)
+            props = {}
+            for match in meta:
+                name = match.group(1)
+                val  = match.group(2)
+                # Tags are the exception to properties just
+                # being a string.
+                if name == 'tags':
+                    val = val.split(' ')
+                props[name] = val
+            self.metadata = props
+            self.check_metadata()
+        return self.metadata
+    def check_metadata(self):
+        if self.metadata or self.metadata == {}:
+            if not 'title' in self.metadata:
+                self.metadata['title'] = None
+            if not 'date' in self.metadata:
+                self.metadata['date']       = None
+                self.metadata['date-year']  = None
+                self.metadata['date-month'] = None
+                self.metadata['date-day']   = None
+            else:
+                # I'm not a fan of this
+                self.metadata['date']       = datetime.strptime(self.metadata['date'], self.properties['date-format'])
+                self.metadata['date-year']  = str(self.metadata['date'].timetuple()[0])
+                self.metadata['date-month'] = "%02d" % self.metadata['date'].timetuple()[1]
+                self.metadata['date-day']   = "%02d" % self.metadata['date'].timetuple()[2]
+                self.metadata['date']       = self.metadata['date'].strftime(self.properties['date-format'])
+            if not 'private' in self.metadata:
+                self.metadata['private'] = False
+            if not 'tags' in self.metadata:
+                self.metadata['tags'] = []
+            if not 'nolayout' in self.metadata:
+                self.metadata['nolayout'] = False
+            self.metadata['name'] = self.name
+class IndexPage:
+    def __init__(self, page_type, index_name, name, pages):
+        self.page_type  = page_type
+        self.index_name = index_name
+        self.name       = name
+        self.pages      = pages
 
 class Gus(object):
     def __init__(self):
-        self.renderable = []
+        self.renderable_pages = []
+        self.renderable_index = []
         self.pages = {}
 
     # This needs a better name
@@ -117,7 +173,6 @@ class Gus(object):
     # Later on it'll calculate rf-idf and tag clouds and the such
     def calculate_properties(self):
         self.properties['current_time'] = time.time();
-        self.properties["indices"] = {}
 
         for page_type, info in self.page_types.items():
             self.pages[page_type] = []
@@ -134,10 +189,9 @@ class Gus(object):
             self.properties[page_type] = [x.as_dict() for x in self.pages[page_type]]
             self.properties["last_5_%s" % page_type] = [x.as_dict() for x in self.pages[page_type][:5]]
 
-            self.properties['indices'][page_type] = {}
             if 'indices' in info:
                 for index_name, index_info in info['indices'].items():
-                    self.properties['indices'][page_type][index_name] = {}
+                    pages_for_index = {}
                     for page in self.pages[page_type]:
                         keys = [""]
                         for over in index_info['over']:
@@ -153,21 +207,12 @@ class Gus(object):
                                 for key in keys:
                                     key += "/" + dataum
                                     new_keys.append(key)
-                                    if not key in self.properties['indices'][page_type][index_name]:
-                                        self.properties['indices'][page_type][index_name][key] = []
-                                    self.properties['indices'][page_type][index_name][key].append(page.as_dict())
+                                    if not key in pages_for_index:
+                                        pages_for_index[key] = []
+                                    pages_for_index[key].append(page.as_dict())
                             keys = new_keys
-                    for key in self.properties['indices'][page_type][index_name]:
-                        self.renderable.append(Renderable(
-                            self.get_index_path(page_type, index_name, key),
-                            self.get_index_template(page_type,index_name),
-                            self.get_site_template(),
-                            None, # There is no markup type
-                            None, # There is no content body
-                            self.properties,
-                            "index",
-                            { 'pages': self.properties['indices'][page_type][index_name][key] }
-                        ))
+                    for key in pages_for_index:
+                        self.add_index(page_type, index_name, key, pages_for_index[key])
 
     def get_site_template(self):
         return self.templates['layout']
@@ -181,6 +226,64 @@ class Gus(object):
         return os.path.join(self.page_types[page_type]['indices'][index_name]['web-directory'], name)
     def get_page_path(self, page_type, name):
         return os.path.join(self.page_types[page_type]['web-directory'], name)
+    def add_page(self, page_type, name, content, markup_format);
+        self.renderable_pages.append(Page(page_type, name, content, markup_format))
+    def add_index(self, page_type, index_name, name, pages):
+        self.renderable_index.append(IndexPage(page_type, index_name, name, pages))
+    def renderables(self):
+        class RenderableIterator:
+            def __init__(self, gus):
+                self.gus = gus
+                self.page_i  = 0
+                self.index_i = 0
+            def __iter__(self):
+                return self
+            def next():
+                if self.page_i < len(gus.renderable_pages):
+                    page = gus.renderable_pages[self.page_i]
+                    self.page_i += 1
+                    return (self.get_page_path(page.page_type, page.name),
+                            self.get_page_template(page.page_type),
+                            page.markup_renderer,
+                            page.content,
+                            page.metadata)
+                if self.index_i < len(gus.renderable_index):
+                    page = gus.renderable_pages[self.page_i]
+                    self.index_i += 1
+                    return (self.get_index_path(page.page_type, page.name, page.index_name),
+                            self.get_index_template(page.page_type, page.index_name),
+                            lambda x : x,
+                            "",
+                            { "pages": page.pages } )
+        return RenderableIterator(self)
+
+    def render_renderables(self):
+        self.rendered_pages = {}
+        for (path, page_template, markup_renderer, content, metadata) in self.renderables():
+            # Remove all lines begining with % because those
+            # are our metadata lines (and I guess could be used
+            # as comments in the template because of how I do this)
+            page_rendered = re.sub('^\%.*$', '', content, 0, re.MULTILINE)
+
+            props = dict(metadata.items() + self.properties.items())
+
+            # Render the page with mustache
+            # Then the page is rendered with the markup (textile or markdown)
+            props['body'] = page_rendered
+            props['body'] = pystache.render(props['body'], props)
+            props['body'] = markup_renderer(props['body'])
+
+            # Now we render the page into its page-template
+            props['body'] = pystache.render(page_template, props)
+            # The page rendered into the page-template is what's used
+            # is the value used in further mustache templates
+            self.rendered_wo_layout = props['body']
+            # The page rendered into the page-templates is then
+            # rendered into the site layout.
+            if not self.metadata['nolayout']:
+                props['body'] = pystache.render(self.templates['layout'], props)
+            self.rendered_pages[path] = props['body']
+        return self.rendered_pages
 
     # This method goes through all of the steps to completly
     # render a site, and then resets the object the make sure
