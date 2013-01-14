@@ -60,6 +60,8 @@ class Page:
                 self.metadata['nolayout'] = False
             if not 'nopagelayout' in self.metadata:
                 self.metadata['nopagelayout'] = False
+            if not 'file_ext' in self.metadata:
+                self.metadata['file_ext'] = 'html'
             self.metadata['name'] = self.name
 
 class IndexPage:

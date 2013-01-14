@@ -28,7 +28,7 @@ class Gus(object):
             "title":    page.metadata['title'],
             "date":     page.metadata['date'],
             "tags":     page.metadata['tags'],
-            "content":  self.rendered_pages[page.name][1],
+            "content":  self.rendered_pages[page.name + "." + page.metadata['file_ext']][1],
             "metadata": page.metadata
         }
     # This needs a better name
@@ -38,6 +38,7 @@ class Gus(object):
     def calculate_properties(self):
         self.render_renderables()
         self.properties['current_time'] = time.time();
+        self.properties['pages'] = []
 
         for page_type, info in self.page_types.items():
             self.pages[page_type] = []
@@ -51,6 +52,7 @@ class Gus(object):
             self.pages[page_type].sort( key = lambda page : page.metadata['date'], reverse=True)
 
             # Allow the templates to see all the pages
+            self.properties['pages'] = [self.page_as_dict(x) for x in self.renderable_pages]
             self.properties[page_type] = [self.page_as_dict(x) for x in self.pages[page_type]]
             self.properties["last_5_%s" % page_type] = [self.page_as_dict(x) for x in self.pages[page_type][:5]]
 
@@ -127,7 +129,7 @@ class Gus(object):
                             self.gus.get_index_template(page.page_type, page.index_name),
                             lambda x : x,
                             "",
-                            { "pages": page.pages, 'nopagelayout': False,  'nolayout': False} )
+                            { "pages": page.pages, 'nopagelayout': False,  'nolayout': False, "file_ext": "html"} )
                 raise StopIteration()
         return RenderableIterator(self)
 
@@ -137,7 +139,7 @@ class Gus(object):
             # Remove all lines begining with % because those
             # are our metadata lines (and I guess could be used
             # as comments in the template because of how I do this)
-            page_rendered = re.sub('^\%.*$', '', content, 0, re.MULTILINE)
+            page_rendered = re.sub('^\%.*$\s+', '', content, 0, re.MULTILINE)
 
             props = dict(metadata.items() + self.properties.items())
 
@@ -146,16 +148,19 @@ class Gus(object):
             props['body'] = page_rendered
             props['body'] = pystache.render(props['body'], props)
             props['body'] = markup_renderer(props['body'])
+            props['on_page'] = False
 
+            # The page rendered into the page-template is what's used
+            # is the value used in further mustache templates
+            rendered_wo_layout = pystache.render(page_template, props)
+
+            props['on_page'] = True
             # Now we render the page into its page-template
             if not metadata['nopagelayout']:
                 props['body'] = pystache.render(page_template, props)
-            # The page rendered into the page-template is what's used
-            # is the value used in further mustache templates
-            rendered_wo_layout = props['body']
-            # The page rendered into the page-templates is then
-            # rendered into the site layout.
-            if not metadata['nolayout']:
-                props['body'] = pystache.render(self.templates['layout'], props)
-            self.rendered_pages[path] = (props['body'], rendered_wo_layout)
+                # The page rendered into the page-templates is then
+                # rendered into the site layout.
+                if not metadata['nolayout']:
+                    props['body'] = pystache.render(self.templates['layout'], props)
+            self.rendered_pages[path + '.' + props['file_ext']] = (props['body'], rendered_wo_layout)
         return self.rendered_pages

@@ -79,7 +79,7 @@ class GusFSLoader(object):
     def render_pages(self):
         for page_path, page_contents in self.gus.render_renderables().items():
             # Remove that first character from rend.name because it's a /
-            dest_file = os.path.join(self.rendered_path, page_path[1:] + ".html")
+            dest_file = os.path.join(self.rendered_path, page_path[1:] )
             dest_file_dir = os.path.dirname(dest_file)
             if not os.path.isdir(dest_file_dir):
                 os.makedirs(dest_file_dir)
