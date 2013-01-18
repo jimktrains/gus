@@ -38,7 +38,6 @@ class Gus(object):
     def calculate_properties(self):
         self.render_renderables()
         self.properties['current_time'] = time.time();
-        self.properties['pages'] = []
 
         for page_type, info in self.page_types.items():
             self.pages[page_type] = []
@@ -48,16 +47,18 @@ class Gus(object):
             self.pages[page.page_type].append(page)
 
         for page_type, info in self.page_types.items():
+            print "Working on %s" % page_type
             # Sort the pages by date and exclude private pages
             self.pages[page_type].sort( key = lambda page : page.metadata['date'], reverse=True)
 
             # Allow the templates to see all the pages
-            self.properties['pages'] = [self.page_as_dict(x) for x in self.renderable_pages]
+            self.properties['all_pages'] = [self.page_as_dict(x) for x in self.renderable_pages]
             self.properties[page_type] = [self.page_as_dict(x) for x in self.pages[page_type]]
             self.properties["last_5_%s" % page_type] = [self.page_as_dict(x) for x in self.pages[page_type][:5]]
 
             if 'indices' in info:
                 for index_name, index_info in info['indices'].items():
+                    print "Generating index %s for %s" % (index_name, page_type)
                     pages_for_index = {}
                     for page in self.pages[page_type]:
                         keys = [""]

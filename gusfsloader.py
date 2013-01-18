@@ -6,6 +6,8 @@ import re
 import shutil
 import tempfile
 import yaml
+from subprocess import call
+
 
 class GusFSLoader(object):
     def __init__(self, site_dir, dest_dir, gus):
@@ -28,6 +30,8 @@ class GusFSLoader(object):
         assert 'page-types' in self.properties, "'page-types' must be defined in properties.yml"
         self.page_types = self.properties['page-types']
         assert 'date-format' in self.properties, "'date-format' must be defined in properties.yml. See http://docs.python.org/2/library/time.html#time.strftime"
+        if not 'file-handlers' in self.properties:
+            self.properties['file-handlers'] = []
         self.gus.properties = self.properties
         self.gus.page_types = self.page_types
 
@@ -35,6 +39,7 @@ class GusFSLoader(object):
         assert os.path.isdir(pages_path), "%s must be a dir" % pages_path
         self.pages_path = pages_path
 
+        self.handled_assets_path = os.path.join(site_dir, "handled-assets")
         templates_path  = os.path.join(site_dir, "templates")
         assert os.path.isdir(templates_path), "%s must be a dir" % templates_path
         self.templates_path = templates_path
@@ -85,6 +90,32 @@ class GusFSLoader(object):
                 os.makedirs(dest_file_dir)
             with open(dest_file, 'w+') as f:
                 f.write(page_contents[0]);
+        for handler in self.properties['file-handlers']:
+            for dirname, dirnames, filenames in os.walk(self.handled_assets_path):
+                for filename in filenames:
+                    if filename == '.gitignore':
+                        continue
+                    if re.match("^\..*.sw.$", filename):
+                        continue
+                    if re.match(".*~$", filename):
+                        continue
+                    if re.match(handler['regex'], filename):
+                        filename = os.path.join(dirname, filename)
+                        rel_path = re.sub(self.handled_assets_path, '', filename)
+                        rel_path = re.sub("^%s" % os.path.sep, '', rel_path)
+                        dest_name = os.path.join(self.rendered_path, rel_path)
+                        dest_path = os.path.dirname(dest_name)
+                        if os.path.exists(dest_name):
+                            os.unlink(dest_name)
+                        if not os.path.isdir(dest_path):
+                            os.makedirs(dest_path)
+                        dest_name_noext, ext = os.path.splitext(dest_name)
+                        print "Running %s on %s with output %s" % (handler['program'], filename, dest_name)
+                        # Call with arguments from yaml later
+                        call([handler['program']['path'], 
+                              filename,
+                              dest_name_noext + "." + handler['output-ext']
+                            ])
 
     # This method loads all of the pages into memory
     def load_pages(self):
