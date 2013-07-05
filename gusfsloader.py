@@ -110,11 +110,12 @@ class GusFSLoader(object):
                         if not os.path.isdir(dest_path):
                             os.makedirs(dest_path)
                         dest_name_noext, ext = os.path.splitext(dest_name)
-                        print "Running %s on %s with output %s" % (handler['program'], filename, dest_name)
+                        dest_name = dest_name_noext + "." + handler['output-ext']
+                        print "Running %s on %s with output %s" % (handler['program']['path'], filename, dest_name)
                         # Call with arguments from yaml later
                         call([handler['program']['path'], 
                               filename,
-                              dest_name_noext + "." + handler['output-ext']
+                              dest_name
                             ])
 
     # This method loads all of the pages into memory

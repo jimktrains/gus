@@ -137,6 +137,7 @@ class Gus(object):
     def render_renderables(self):
         self.rendered_pages = {}
         for (path, page_template, markup_renderer, content, metadata) in self.renderables():
+            print path
             # Remove all lines begining with % because those
             # are our metadata lines (and I guess could be used
             # as comments in the template because of how I do this)
