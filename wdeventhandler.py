@@ -19,7 +19,7 @@ class WDEventHandler(FileSystemEventHandler):
             self.timer = ResettableTimer(0.5, self.timer_callback)
         else:
             self.timer.reset()
-        print "mod or create %s" % event.src_path
+        print("mod or create %s" % event.src_path)
     def on_created(self, event):
         self.do_something(event)
     def on_modified(self, event):

@@ -59,7 +59,7 @@ class GusFSLoader(object):
         self.path      = {}
         self.templates = { 'indices': {} }
 
-        for page_type, info in self.page_types.items():
+        for page_type, info in list(self.page_types.items()):
             page_path = os.path.join(pages_path, page_type)
             assert os.path.isdir(page_path), "%s must be a dir" % page_path
             self.path[page_type] = page_path
@@ -70,7 +70,7 @@ class GusFSLoader(object):
                 self.gus.set_page_template(page_type, f.read())
             if 'indices' in info:
                 self.templates['indices'][page_type] = {}
-                for index_name, index_info in info['indices'].items():
+                for index_name, index_info in list(info['indices'].items()):
                     page_template = os.path.join(templates_path, "%s-index-%s.mustache" % (page_type, index_name))
                     assert os.path.isfile(page_template), "%s must be a file" % page_template
                     with open(page_template, 'r') as f:
@@ -82,7 +82,7 @@ class GusFSLoader(object):
             self.gus.set_site_template(f.read())
 
     def render_pages(self):
-        for page_path, page_contents in self.gus.render_renderables().items():
+        for page_path, page_contents in list(self.gus.render_renderables().items()):
             # Remove that first character from rend.name because it's a /
             dest_file = os.path.join(self.rendered_path, page_path[1:] )
             dest_file_dir = os.path.dirname(dest_file)
@@ -111,7 +111,7 @@ class GusFSLoader(object):
                             os.makedirs(dest_path)
                         dest_name_noext, ext = os.path.splitext(dest_name)
                         dest_name = dest_name_noext + "." + handler['output-ext']
-                        print "Running %s on %s with output %s" % (handler['program']['path'], filename, dest_name)
+                        print("Running %s on %s with output %s" % (handler['program']['path'], filename, dest_name))
                         # Call with arguments from yaml later
                         call([handler['program']['path'], 
                               filename,
@@ -121,7 +121,7 @@ class GusFSLoader(object):
     # This method loads all of the pages into memory
     def load_pages(self):
         self.reload_templates()
-        for page_type, info in self.page_types.items():
+        for page_type, info in list(self.page_types.items()):
             base_name = self.path[page_type]
             for dirname, dirnames, filenames in os.walk(base_name):
                 for filename in filenames:
@@ -141,7 +141,7 @@ class GusFSLoader(object):
                     content = None
                     with open(filename, 'r') as f:
                         content = f.read()
-                    print "renderable %s" % name
+                    print("renderable %s" % name)
                     self.gus.add_page(page_type, name, content, markup_format);
 
     # This is the eq of doing cp -r directory/* other-dir
@@ -160,7 +160,7 @@ class GusFSLoader(object):
                     os.unlink(dest_name)
                 if not os.path.isdir(dest_path):
                     os.makedirs(dest_path)
-                print "%s -> %s" % (src_name, dest_name)
+                print("%s -> %s" % (src_name, dest_name))
                 shutil.copy(src_name, dest_name)
     def copy_assets(self):
         self.copytree_wo_root(self.assets_path, self.rendered_path)

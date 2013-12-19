@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from argparse import ArgumentParser, ArgumentTypeError
 from gus import Gus
@@ -27,7 +27,7 @@ gus_loader = GusFSLoader(args.src_dest['src'], args.src_dest['dest'], gus)
 
 gus_loader.render_site()
 if args.watch:
-	print "Waiting on edits"
+	print("Waiting on edits")
 	event_handler = WDEventHandler(gus_loader)
 	observer = Observer()
 	observer.schedule(event_handler, path=args.src_dest['src'], recursive=True)

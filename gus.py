@@ -39,15 +39,15 @@ class Gus(object):
         self.render_renderables()
         self.properties['current_time'] = time.time();
 
-        for page_type, info in self.page_types.items():
+        for page_type, info in list(self.page_types.items()):
             self.pages[page_type] = []
         for page in self.renderable_pages:
             if page.metadata['private']:
                 continue
             self.pages[page.page_type].append(page)
 
-        for page_type, info in self.page_types.items():
-            print "Working on %s" % page_type
+        for page_type, info in list(self.page_types.items()):
+            print("Working on %s" % page_type)
             # Sort the pages by date and exclude private pages
             self.pages[page_type].sort( key = lambda page : page.metadata['date'], reverse=True)
 
@@ -57,8 +57,8 @@ class Gus(object):
             self.properties["last_5_%s" % page_type] = [self.page_as_dict(x) for x in self.pages[page_type][:5]]
 
             if 'indices' in info:
-                for index_name, index_info in info['indices'].items():
-                    print "Generating index %s for %s" % (index_name, page_type)
+                for index_name, index_info in list(info['indices'].items()):
+                    print("Generating index %s for %s" % (index_name, page_type))
                     pages_for_index = {}
                     for page in self.pages[page_type]:
                         keys = [""]
@@ -114,7 +114,7 @@ class Gus(object):
                 self.index_i = 0
             def __iter__(self):
                 return self
-            def next(self):
+            def __next__(self):
                 if self.page_i < len(self.gus.renderable_pages):
                     page = self.gus.renderable_pages[self.page_i]
                     self.page_i += 1
@@ -137,13 +137,13 @@ class Gus(object):
     def render_renderables(self):
         self.rendered_pages = {}
         for (path, page_template, markup_renderer, content, metadata) in self.renderables():
-            print path
+            print(path)
             # Remove all lines begining with % because those
             # are our metadata lines (and I guess could be used
             # as comments in the template because of how I do this)
             page_rendered = re.sub('^\%.*$\s+', '', content, 0, re.MULTILINE)
 
-            props = dict(metadata.items() + self.properties.items())
+            props = dict(list(metadata.items()) + list(self.properties.items()))
 
             # Render the page with mustache
             # Then the page is rendered with the markup (textile or markdown)
