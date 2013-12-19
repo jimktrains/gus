@@ -49,7 +49,7 @@ class Gus(object):
         for page_type, info in list(self.page_types.items()):
             print("Working on %s" % page_type)
             # Sort the pages by date and exclude private pages
-            self.pages[page_type].sort( key = lambda page : page.metadata['date'], reverse=True)
+            self.pages[page_type].sort( key = lambda page : page.metadata['date'] or 0, reverse=True)
 
             # Allow the templates to see all the pages
             self.properties['all_pages'] = [self.page_as_dict(x) for x in self.renderable_pages]
