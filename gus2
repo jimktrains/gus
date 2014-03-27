@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+
+from argparse import ArgumentParser, ArgumentTypeError
+import re
+import time
+import hashlib
+import os
+import json
+import pystache
+from docutils.core import publish_parts
+
+parser = ArgumentParser(prog="gus", description="Generate static sites from textile and mustache files.")
+def src_dest_argtype(string):
+	match = re.match("(?P<src>[^:]+):(?P<dest>[^:]+)", string)
+	if match is None:
+		raise ArgumentTypeError("gus src_dir:dest_dir")
+	return match.groupdict()
+
+parser.add_argument("-w", "--watch", action="store_true", help="Watch src directory for changes.")
+parser.add_argument("src_dest", metavar="src_dir:dest_dir", type=src_dest_argtype,
+	help="The source and generated site are set using a colon. For example, gus src:public")
+
+args = parser.parse_args()
+
+class Node:
+    def dirty(self):
+        self.dirty = True
+        for child in self.children():
+            self.child.dirty()
+    def render_in_layout(self, ctx):
+        if self.parent:
+            with open(self.parent.layout.path, 'r') as layout:
+                return {'body': pystache.render(layout, ctx)}
+        else:
+            return ctx['body']
+
+class File(Node):
+    hasher = hashlib.sha256
+    def __init__(self):
+        self.name = None
+        self.path = None
+        self.mtime = None
+        self.size = None
+        self.hash = None
+        self.parent = None
+
+    def children(self):
+        return []
+
+    def render(self):
+        with open(self.path, 'r') as f:
+            return {'body': publish_parts(f.read(), writer_name='html')['html_body']}
+
+    @staticmethod
+    def from_path(path, parent):
+        self = File()
+        self.path = path
+        self.parent = parent
+        self.name = os.path.basename(path)
+        fstats = os.stat(path)
+        self.mtime = fstats.st_mtime
+        self.size = fstats.st_size
+        with open(path, 'rb') as f:
+            self.hash = self.hasher(f.read()).hexdigest()
+        return self
+
+class Section(Node):
+    def __init__(self):
+        self.indices = None
+        self.layout = None
+        self.template = None
+        self.subsections = []
+        self.pages = []
+        self.name = None
+        self.path = None
+        self.parent = None
+    def children(self):
+        return self.subsections + self.pages
+
+    @staticmethod
+    def from_path(path, parent = None):
+        self = Section()
+        self.name = os.path.basename(path)
+        self.path = path
+        self.parent = parent
+        for item in os.listdir(path):
+            item_path = os.path.join(path, item)
+            if os.path.isfile(item_path):
+                if item == 'layout.mustache':
+                   self.layout = File.from_path(item_path, parent = self)
+                elif item == 'template.mustache':
+                    self.template = File.from_path(item_path, parent = self)
+                elif item == 'indices.yml':
+                    self.indices = File.from_path(item_path, parent = self)
+                else:
+                    self.pages.append(File.from_path(item_path, parent = self))
+            else:
+                self.subsections.append(Section.from_path(item_path, parent = self))
+        if not self.layout:
+            raise Exception('Section must have a layout.mustache')
+        if not self.template:
+            raise Exception('Section must have a template.mustache')
+        if not self.indices:
+            raise Exception('Section must have a indices.yml')
+        return self
+
+#print(json.dumps(Section.from_path(args.src_dest['src'] + '/src'), default=lambda x : x.__dict__))
+
+
