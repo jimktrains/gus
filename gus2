@@ -26,13 +26,21 @@ class Node:
     def dirty(self):
         self.dirty = True
         for child in self.children():
-            self.child.dirty()
+            child.dirty()
     def render_in_layout(self, ctx):
         if self.parent:
             with open(self.parent.layout.path, 'r') as layout:
                 return {'body': pystache.render(layout, ctx)}
         else:
             return ctx['body']
+    def print(self, indent=0):
+        pre = ((indent * 2) * ' ')
+        post = ''
+        if self.dirty: post='*'
+        print(pre + self.name + post)
+        for child in self.children():
+            child.print(indent+1)
+
 
 class File(Node):
     hasher = hashlib.sha256
@@ -106,4 +114,5 @@ class Section(Node):
 
 #print(json.dumps(Section.from_path(args.src_dest['src'] + '/src'), default=lambda x : x.__dict__))
 
-
+s = Section.from_path(args.src_dest['src'] + '/src')
+s.print()
