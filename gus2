@@ -7,7 +7,7 @@ import hashlib
 import os
 import json
 import pystache
-from docutils.core import publish_parts
+import docutils.core
 
 parser = ArgumentParser(prog="gus", description="Generate static sites from textile and mustache files.")
 def src_dest_argtype(string):
@@ -23,9 +23,12 @@ parser.add_argument("src_dest", metavar="src_dir:dest_dir", type=src_dest_argtyp
 args = parser.parse_args()
 
 class Node:
+    def __init__(self):
+        self.is_dirty = None
+
     def dirty(self):
-        self.dirty = True
-        for child in self.children():
+        self.is_dirty = True
+        for child in self.children().items():
             child.dirty()
     def render_in_layout(self, ctx):
         if self.parent:
@@ -36,15 +39,50 @@ class Node:
     def print(self, indent=0):
         pre = ((indent * 2) * ' ')
         post = ''
-        if self.dirty: post='*'
+        if self.is_dirty:
+            post='*'
         print(pre + self.name + post)
-        for child in self.children():
+        for name,child in self.children().items():
             child.print(indent+1)
+    def render(self):
+        raise Exception('This method should be overridden')
+
+class RenderedDoc:
+    def __init__(self, body, authors, pub_date):
+        self.body = body
+        self.authors = authors
+        self.pub_date = pub_date
+
+class RstRenderer:
+    @staticmethod
+    def render(cntnt):
+        # dict_keys(['subtitle', 'version', 'encoding', 
+        #            'html_prolog', 'header', 'meta', 
+        #            'html_title', 'title', 'stylesheet', 
+        #            'html_subtitle', 'html_body', 'body', 
+        #            'head', 'body_suffix', 'fragment', 
+        #            'docinfo', 'html_head', 'head_prefix', 
+        #            'body_prefix', 'footer', 'body_pre_docinfo', 
+        #            'whole'])
+        doc_parts = docutils.core.publish_parts(cntnt, writer_name='html')
+        doc_tree = docutils.core.publish_doctree(cntnt)
+        authors = []
+        pub_date = None
+        for node in doc_tree.traverse():
+            if node.tagname == 'author':
+                authors.append(node.astext())
+            elif node.tagname == 'date':
+                pub_date = node.astext()
+
+        return RenderedDoc(body = doc_parts['body'], 
+                           authors = authors, 
+                           pub_date = pub_date)
 
 
 class File(Node):
     hasher = hashlib.sha256
     def __init__(self):
+        super().__init__()
         self.name = None
         self.path = None
         self.mtime = None
@@ -53,11 +91,12 @@ class File(Node):
         self.parent = None
 
     def children(self):
-        return []
+        return dict()
 
     def render(self):
-        with open(self.path, 'r') as f:
-            return {'body': publish_parts(f.read(), writer_name='html')['html_body']}
+        if self.path[-3:] == 'rst':
+            rd = RstRenderer.render(self.file_content)
+            return self.render_in_layout(rd.__dict__)
 
     @staticmethod
     def from_path(path, parent):
@@ -69,21 +108,23 @@ class File(Node):
         self.mtime = fstats.st_mtime
         self.size = fstats.st_size
         with open(path, 'rb') as f:
-            self.hash = self.hasher(f.read()).hexdigest()
+            self.file_content = f.read()
+            self.hash = self.hasher(self.file_content).hexdigest()
         return self
 
 class Section(Node):
     def __init__(self):
+        super().__init__()
         self.indices = None
         self.layout = None
         self.template = None
-        self.subsections = []
-        self.pages = []
+        self.subsections = {}
+        self.pages = {}
         self.name = None
         self.path = None
         self.parent = None
     def children(self):
-        return self.subsections + self.pages
+        return dict(list(self.subsections.items()) + list(self.pages.items()))
 
     @staticmethod
     def from_path(path, parent = None):
@@ -101,9 +142,9 @@ class Section(Node):
                 elif item == 'indices.yml':
                     self.indices = File.from_path(item_path, parent = self)
                 else:
-                    self.pages.append(File.from_path(item_path, parent = self))
+                    self.pages[item] = File.from_path(item_path, parent = self)
             else:
-                self.subsections.append(Section.from_path(item_path, parent = self))
+                self.subsections[item] = Section.from_path(item_path, parent = self)
         if not self.layout:
             raise Exception('Section must have a layout.mustache')
         if not self.template:
@@ -116,3 +157,5 @@ class Section(Node):
 
 s = Section.from_path(args.src_dest['src'] + '/src')
 s.print()
+
+s.subsections['posts'].pages['post-1.rst'].render()
