@@ -1,0 +1,6 @@
+markdown
+textile
+pystache
+pyyaml
+watchdog
+
