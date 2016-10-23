@@ -3,13 +3,17 @@ import os
 from resettabletimer import ResettableTimer
 from watchdog.events import FileSystemEventHandler
 
+
 class WDEventHandler(FileSystemEventHandler):
+
     def __init__(self, gus):
         self.timer = None
-        self.gus   = gus
+        self.gus = gus
+
     def timer_callback(self):
         self.gus.render_site()
         self.timer = None
+
     def do_something(self, event):
         if re.match('.*~$', event.src_path):
             return
@@ -20,7 +24,9 @@ class WDEventHandler(FileSystemEventHandler):
         else:
             self.timer.reset()
         print("mod or create %s" % event.src_path)
+
     def on_created(self, event):
         self.do_something(event)
+
     def on_modified(self, event):
         self.do_something(event)
